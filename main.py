@@ -33,5 +33,10 @@ def main():
         reward = mab.pull_arm(i)
         print(f"Pulled arm {i}, received reward: {reward:.2f}")
 
+
+def epsilon_greedy_optimistic():
+    #pass
+    print("fuck u python")
+
 if __name__ == "__main__":
     main()
