@@ -45,7 +45,7 @@ class MultiArmedBandit:
 def main():
     num_arms = 10  # Number of arms in the bandit
     mab = MultiArmedBandit(num_arms)
-    num_iterations = 10000  # Number of iterations, increased to 10000 for more stable estimates
+    num_iterations = 1000  # Number of iterations
     epsilon = 0.1  # Exploration rate
 
     for iteration in range(num_iterations):
@@ -56,12 +56,6 @@ def main():
         # Update the value estimates for the selected arm
         mab.update_estimates(arm_index, reward)
         
-        # Print progress every 1000 iterations
-        if (iteration + 1) % 1000 == 0:
-            print(f"Iteration {iteration + 1}")
-            for i in range(num_arms):
-                print(f"  Arm {i}: Estimated Value = {mab.values[i]:.2f}, True Mean = {mab.arms[i].mean:.2f}, Deviation = {abs(mab.values[i] - mab.arms[i].mean):.2f}")
-
     # Print the final estimated values, true means, and deviations of each arm after all iterations
     print("\nFinal Estimates and True Means:")
     for i in range(num_arms):
