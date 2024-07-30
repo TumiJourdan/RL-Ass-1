@@ -53,6 +53,11 @@ class MultiArmedBandit:
         self.counts = np.zeros(num_arms)
         self.values = np.zeros(num_arms)
 
+    def clear(self):
+        self.strategy.initialize(10)
+        self.counts = np.zeros(10)
+        self.values = np.zeros(10)
+
     def pull_arm(self, arm_index):
         # Pull the specified arm and get a reward
         if 0 <= arm_index < len(self.arms):
@@ -113,14 +118,7 @@ class UCBStrategy(Strategy):
         # Select the arm with the highest UCB value
         return np.argmax(ucb_values)
 
-def main():
-    num_arms = 10  # Number of arms in the bandit
-    mab = MultiArmedBandit(num_arms)
 
-    # Example of pulling each arm and printing the reward
-    for i in range(num_arms):
-        reward = mab.pull_arm(i)
-        print(f"Pulled arm {i}, received reward: {reward:.2f}")
 
 
 class epsilon_greedy_optimistic():
@@ -178,20 +176,18 @@ class epsilon_greedy_optimistic():
             counter +=1
         return results
 
-if __name__ == "__main__":
-    main()
 
 # Function to run the UCB algorithm
-def UCB():
-    num_arms = 10
+def UCB(bandit_ucb):
+    
     num_iterations = 1000
     num_runs = 100
 
     all_rewards = np.zeros((num_runs, num_iterations))
 
     for run in range(num_runs):
-        ucb_strategy = UCBStrategy()
-        bandit_ucb = MultiArmedBandit(num_arms, ucb_strategy)
+        
+        bandit_ucb.clear()
         rewards = np.zeros(num_iterations)
 
         for i in range(num_iterations):
@@ -208,24 +204,32 @@ def UCB():
     return average_rewards
 
 
-def Egreedy():
-    num_arms = 10  # Number of arms in the bandit
-    mab = MultiArmedBandit(num_arms)
+def Egreedy(mab):
+    
     num_iterations = 1000  # Number of iterations
     epsilon = 0.1  # Exploration rate
 
-    rewards = []
+    all_rewards = np.zeros((100, num_iterations))
 
-    for iteration in range(num_iterations):
-        # Select an arm to pull using epsilon-greedy strategy
-        arm_index = mab.select_arm(epsilon)
-        # Pull the selected arm
-        reward = mab.pull_arm(arm_index)
-        rewards.append(reward)
-        # Update the value estimates for the selected arm
-        mab.update_estimates(arm_index, reward)
-    
-    return rewards
+    for run in range(100):
+        mab.clear()
+        rewards = np.zeros(num_iterations)
+
+        for i in range(num_iterations):
+            # Select an arm to pull using epsilon-greedy strategy
+            arm_index = mab.select_arm(epsilon)
+            # Pull the selected arm
+            reward = mab.pull_arm(arm_index)
+            
+            # Update the value estimates for the selected arm
+            mab.update_estimates(arm_index, reward)
+            rewards[i] = reward
+
+        all_rewards[run] = rewards
+
+    average_rewards = np.mean(all_rewards, axis=0)
+
+    return average_rewards
         
     # Print the final estimated values, true means, and deviations of each arm after all iterations
     #print("\nFinal Estimates and True Means:")
@@ -235,17 +239,19 @@ def Egreedy():
     #    deviation = np.abs(estimated_value - true_mean)
     #    print(f"Arm {i}: Estimated Value = {estimated_value:.2f}, True Mean = {true_mean:.2f}, Deviation = {deviation:.2f}")
 
-
-
+ucb_strategy = UCBStrategy()
+mab = MultiArmedBandit(10, ucb_strategy)
 # Run the UCB algorithm
-egreedy=Egreedy()
-ucb=UCB()
+egreedy=Egreedy(mab)
+ucb=UCB(mab)
 ego = epsilon_greedy_optimistic(0.1,20,0.01)
 ego_results = ego.run_greedy_opt()
 
 ego_results.displayGraphs()
 
-plt.plot(ucb)
+plt.plot(egreedy, label="e greedy")
+plt.plot(ucb, label="UCB")
+plt.legend(loc="lower right")
 plt.xlabel('Iterations')
 plt.ylabel('Reward')
 plt.title('Reward per Iteration')
