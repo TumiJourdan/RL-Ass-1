@@ -14,23 +14,10 @@ class Arm:
         reward = np.random.normal(self.mean, np.sqrt(self.variance))
         return reward
 
-class DefaultStrategy:
-    def initialize(self, num_arms):
-        pass
-
-    def update(self, arm_index, reward):
-        pass
-
-    def select_arm(self):
-        return 0
-
 class MultiArmedBandit:
-    def __init__(self, num_arms, strategy=None):
+    def __init__(self, num_arms):
         # Initialize the arms
         self.arms = [Arm() for _ in range(num_arms)]
-        self.strategy = strategy if strategy is not None else DefaultStrategy()
-        self.strategy.initialize(num_arms)
-
 
     def pull_arm(self, arm_index):
         # Pull the specified arm and get a reward
@@ -38,13 +25,6 @@ class MultiArmedBandit:
             return self.arms[arm_index].pull()
         else:
             raise ValueError("Invalid arm index.")
-
-    def update_estimates(self, arm_index, reward):
-        self.strategy.update(arm_index, reward)
-
-    # Method to select the next arm to pull based on the strategy
-    def select_arm(self):
-        return self.strategy.select_arm()
     
 class Results:
     def __init__(self,num_arms):
@@ -58,42 +38,67 @@ class Results:
         self.rewards.append(reward)
         
     def displayGraphs(self):
-        steps = self.results.count
-        averages = []
-        for x in self.results:
-            averages.append(np.mean(x))
-        plt.subplot(1, 2, 1)  # 1 row, 2 columns, 1st subplot
-        plt.xticks(range(len(averages)))
+        nprewards = np.array(self.rewards)
+        rewards_reshaped = nprewards.reshape(-1, 100)
+        averages = rewards_reshaped.mean(axis=1)
         
-class Strategy:
-    def initialize(self, num_arms):
-        self.counts = np.zeros(num_arms)  # Number of times each arm has been pulled
-        self.values = np.zeros(num_arms)  # Estimated value of each arm
-        self.total_pulls = 0  # Total number of pulls
+        plt.plot(averages)
+        plt.show()
+        
+        
+class epsilon_greedy_optimistic():
+    def __init__(self,mab,iterations,learning_alpha,optimistic_estimate,epsilon) -> None:
+        self.iterations = iterations
+        self.learning_alpha = learning_alpha
+        self.optimistic_estimate = optimistic_estimate
+        self.epsilon = epsilon
+        self.mab = mab
+    
+    def run_greedy_opt(self):
+        
+        debug = False
+        
+        num_arms = 10
+        results = Results(num_arms)
+        running_sums = np.zeros(num_arms)
 
-    # Method to update the estimates for a given arm
-    def update(self, arm_index, reward):
-        self.counts[arm_index] += 1
-        self.total_pulls += 1
-        n = self.counts[arm_index]
-        value = self.values[arm_index]
-        # Incremental update of the mean value estimate for the arm
-        self.values[arm_index] = value + (reward - value) / n
-
-    # Method to select the next arm to pull (to be implemented by specific strategies)
-    def select_arm(self):
-        raise NotImplementedError
-
-# Class implementing the UCB (Upper Confidence Bound) strategy
-class UCBStrategy(Strategy):
-    def select_arm(self):
-        if self.total_pulls < len(self.counts):
-            # Pull each arm once initially
-            return self.total_pulls
-        # Calculate UCB values for each arm
-        ucb_values = self.values + 2 * np.sqrt(np.log(self.total_pulls) / self.counts)
-        # Select the arm with the highest UCB value
-        return np.argmax(ucb_values)
+        for x in range(len(running_sums)):
+            running_sums[x] = self.optimistic_estimate
+            
+        counter = 0
+        while counter<self.iterations:
+            ##
+            if(debug):print(running_sums)
+            # Explore or exploit
+            flip_result = random.random()
+            if(flip_result > self.epsilon):
+                ##
+                if(debug):print("Exploit")
+                # exploit
+                max_estimate = np.max(running_sums)
+                candidates = np.where(running_sums == max_estimate)[0]
+                arm_index =  int(np.random.choice(candidates))
+            else:
+                ##
+                if(debug):print("Explore")
+                # Explore
+                arm_index = np.random.randint(0, len(running_sums))
+                
+            if(debug):print("Selected = ",running_sums[arm_index])
+            # do action
+            reward = self.mab.pull_arm(arm_index)
+            Qn = running_sums[arm_index]
+            Rn = reward
+            running_sums[arm_index] = Qn + self.learning_alpha*(Rn - Qn)
+            if(np.isinf(running_sums[arm_index])):
+                print("Is infinity")
+                print("Rn = ", Rn)
+                print("Qn = ", Qn)
+                
+            results.store_results(running_sums)
+            results.store_rewards(reward)
+            counter +=1
+        return results
 
 
 
@@ -114,37 +119,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Function to run the UCB algorithm
-def UCB():
-    num_arms = 10
-    num_iterations = 1000
-    num_runs = 100
-
-    all_rewards = np.zeros((num_runs, num_iterations))
-
-    for run in range(num_runs):
-        ucb_strategy = UCBStrategy()
-        bandit_ucb = MultiArmedBandit(num_arms, ucb_strategy)
-        rewards = np.zeros(num_iterations)
-
-        for i in range(num_iterations):
-            arm_index = bandit_ucb.select_arm()
-            reward = bandit_ucb.pull_arm(arm_index)
-            bandit_ucb.update_estimates(arm_index, reward)
-            rewards[i] = reward
-
-        all_rewards[run] = rewards
-
-    average_rewards = np.mean(all_rewards, axis=0)
-
-
-    return average_rewards
-
-# Run the UCB algorithm
-ucb=UCB()
-plt.plot(ucb)
-plt.xlabel('Iterations')
-plt.ylabel('Reward')
-plt.title('Reward per Iteration (UCB)')
-plt.show()
