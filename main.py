@@ -214,21 +214,27 @@ def Egreedy():
     num_iterations = 1000  # Number of iterations
     epsilon = 0.1  # Exploration rate
 
+    rewards = []
+
     for iteration in range(num_iterations):
         # Select an arm to pull using epsilon-greedy strategy
         arm_index = mab.select_arm(epsilon)
         # Pull the selected arm
         reward = mab.pull_arm(arm_index)
+        rewards.append(reward)
         # Update the value estimates for the selected arm
         mab.update_estimates(arm_index, reward)
+    
+    return rewards
         
     # Print the final estimated values, true means, and deviations of each arm after all iterations
-    print("\nFinal Estimates and True Means:")
-    for i in range(num_arms):
-        estimated_value = mab.values[i]
-        true_mean = mab.arms[i].mean
-        deviation = np.abs(estimated_value - true_mean)
-        print(f"Arm {i}: Estimated Value = {estimated_value:.2f}, True Mean = {true_mean:.2f}, Deviation = {deviation:.2f}")
+    #print("\nFinal Estimates and True Means:")
+    #for i in range(num_arms):
+    #    estimated_value = mab.values[i]
+    #    true_mean = mab.arms[i].mean
+    #    deviation = np.abs(estimated_value - true_mean)
+    #    print(f"Arm {i}: Estimated Value = {estimated_value:.2f}, True Mean = {true_mean:.2f}, Deviation = {deviation:.2f}")
+
 
 
 # Run the UCB algorithm
