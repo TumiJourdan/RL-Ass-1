@@ -1,11 +1,15 @@
 from World import World,movelist
 from agent import RandomAgent, SmartAgent
+from policyGrid import GRID
 
 
 start = (6,0)
 goal = (0,0)
 obstacleList = [(2,0), (2,1), (2,2), (2,3), (2,4), (2,5)]
 world = World((obstacleList), start, goal)
+grid = GRID()
+policy=grid.gridWorld
+
 
 board = world.getBoard()
 print(board)
@@ -22,8 +26,8 @@ for _ in range(50):
 
 print(f"AgentOne final position: {agent1.position}")
 
-for _ in range(10):
-    move1 = agent2.chooseMove(movelist)
+while agent2.currentReward!=20:
+    move1 = agent2.chooseMove(movelist,policy)
     agent2.makeMove(move1, world)
 
 
