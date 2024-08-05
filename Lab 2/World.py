@@ -56,6 +56,8 @@ class World:
     
     def getPath(self):
         return self.PathTravelled
+
+        
     
 # example usage
 # start = (6,0)

@@ -30,7 +30,7 @@ class SmartAgent(Agent):
     def chooseMove(self, movelist, policy):
         scores = []
         for move in movelist:
-            possible_move = self.position + move
+            possible_move = self.position + np.array(move)
             if 0 <= possible_move[0] < policy.shape[0] and 0 <= possible_move[1] < policy.shape[1]:  # Check boundaries
                 scores.append((policy[tuple(possible_move)], move))
             else:
