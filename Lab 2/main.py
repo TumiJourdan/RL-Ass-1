@@ -11,7 +11,7 @@ board = world.getBoard()
 print(board)
 
 agent1 = RandomAgent(position=start)
-agent2 = SmartAgent()
+agent2 = SmartAgent(position=start)
 
 
 print(f"AgentOne initial position: {agent1.position}")
@@ -22,6 +22,13 @@ for _ in range(50):
 
 print(f"AgentOne final position: {agent1.position}")
 
-path = world.getPath()
-print(path)
+for _ in range(10):
+    move1 = agent2.chooseMove(movelist)
+    agent2.makeMove(move1, world)
+
+
+print(agent1.getPath())
 print(agent1.reward)
+
+print(agent2.getPath())
+print(agent2.reward)
