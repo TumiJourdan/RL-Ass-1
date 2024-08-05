@@ -26,10 +26,11 @@ for _ in range(50):
 
 print(f"AgentOne final position: {agent1.position}")
 
+print(f"Agent Two initial position: {agent2.position}")
 while agent2.currentReward!=20:
     move1 = agent2.chooseMove(movelist,policy)
     agent2.makeMove(move1, world)
-
+print(f"AgentTwo final position: {agent2.position}")
 
 print(agent1.getPath())
 print(agent1.reward)
