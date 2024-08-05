@@ -1,10 +1,27 @@
 from World import World,movelist
 from agent import RandomAgent, SmartAgent
 from policyGrid import GRID
+import matplotlib.pyplot as plt
 
+
+
+def debugBoards(randAgent:RandomAgent,smartAgent:SmartAgent):
+    path = randAgent.getPath()
+    
+    x,y = zip(*randAgent.getPath())
+    plt.scatter(x,y,color='blue', marker='o')
+    for i in range(len(x) - 1):
+        plt.annotate(
+            '', 
+            xy=(x[i+1], y[i+1]), 
+            xytext=(x[i], y[i]), 
+            arrowprops=dict(arrowstyle='->', color='red', lw=1.5)
+        )
+    plt.show()
 
 START = (6,0)
 GOAL = (0,0)
+
 obstacleList = [(2,0), (2,1), (2,2), (2,3), (2,4), (2,5)]
 world = World((obstacleList), START, GOAL)
 grid = GRID()
@@ -38,3 +55,5 @@ print(agent1.reward)
 
 print(agent2.getPath())
 print(agent2.reward)
+
+debugBoards(agent1,agent2)

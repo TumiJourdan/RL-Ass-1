@@ -5,7 +5,7 @@ class Agent:
         self.position = position
         self.reward=0
         self.currentReward=0
-        self.path=[]
+        self.path=[position]
 
     def chooseMove(self,movelist):
         raise NotImplementedError("This method should be overridden by subclasses")
