@@ -31,7 +31,7 @@ class World:
         #move is integer, 1 2 3 4 (up down left right respectively)
         projectedCoordinates = self.AgentCoordinates + move
         
-        if(projectedCoordinates[0] < 0 or projectedCoordinates[1] < 0 or projectedCoordinates[0] > 6 or projectedCoordinates[0] > 6): #out of bounds check
+        if(projectedCoordinates[0] < 0 or projectedCoordinates[1] < 0 or projectedCoordinates[0] > 6 or projectedCoordinates[1] > 6): #out of bounds check
             self.PathTravelled.append(tuple(self.AgentCoordinates))
             return self.AgentCoordinates, -1
         
