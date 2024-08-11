@@ -1,6 +1,8 @@
 import numpy as np
 from World import World
 import math
+import seaborn as sns #pip install seaborn if you havent already
+import matplotlib as plt
 
 UP = (-1,0)
 DOWN = (1,0)
@@ -50,6 +52,9 @@ class valIteration:
             print(delta)
             print(self.world.grid)
             
+def heatMap(grid):
+    sns.heatmap(grid, annot=True, cmap='coolwarm', cbar=True)
+    plt.show()
         
 obstacleList = []
 START = (3,3)
