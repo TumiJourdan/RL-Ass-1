@@ -1,8 +1,13 @@
+# 2332155 Tao Yuan
+# 2424161 Shakeel Malagas
+# 2180153 Tumi Jourdan
+
+
 import numpy as np
 from World import World
 import math
 import seaborn as sns #pip install seaborn if you havent already
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 UP = (-1,0)
 DOWN = (1,0)
@@ -42,7 +47,9 @@ class valIteration:
         
     def thetaLoop(self,theta:float,boolInPlace,discount=1):
         delta = math.inf
+        count = 0
         while (delta>theta):
+            count += 1
             if(boolInPlace):
                 deltas = self.doValIteration(self.world.grid,discount)
             else:
@@ -51,6 +58,7 @@ class valIteration:
             delta = np.max(deltas)
             print(delta)
             print(self.world.grid)
+        return count
             
 def heatMap(grid):
     sns.heatmap(grid, annot=True, cmap='coolwarm', cbar=True)
@@ -63,4 +71,38 @@ GOAL  =(0,0)
 world = World((obstacleList), START, GOAL)
 
 valueiterationInst = valIteration(world)
-valueiterationInst.thetaLoop(0.1,True,0.1)
+valueiterationInst.thetaLoop(0.1,True,1)
+
+heatMap(valueiterationInst.world.grid)
+
+x_space =  np.logspace(-0.2, 0, num=20)
+x_1array = np.zeros_like(x_space)
+x_2array = np.zeros_like(x_space)
+for x in range(len(x_space)):
+    world = World((obstacleList), START, GOAL)
+    valueiterationInst = valIteration(world)
+    x_1array[x] = valueiterationInst.thetaLoop(0.1,True,x_space[x])
+    
+    world = World((obstacleList), START, GOAL)
+    valueiterationInst = valIteration(world)
+    x_2array[x] = valueiterationInst.thetaLoop(0.1,False,x_space[x])
+    
+    
+# Plotting
+plt.figure(figsize=(10, 6))
+
+plt.plot(x_space, x_1array, label='In-Place Evaluation', marker='o')
+plt.plot(x_space, x_2array, label='2-Array Evaluation', marker='x')
+
+# Labeling the axes
+plt.xlabel('Discount Rate')
+plt.ylabel('Number of Iterations to Convergence')
+
+# Adding a title
+plt.title('Comparison of Policy Evaluation Methods')
+
+# Adding a legend
+plt.legend()
+
+# Display the plot
+plt.show()

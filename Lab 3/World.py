@@ -1,3 +1,7 @@
+# 2332155 Tao Yuan
+# 2424161 Shakeel Malagas
+# 2180153 Tumi Jourdan
+
 import numpy as np
 
 #constants 
