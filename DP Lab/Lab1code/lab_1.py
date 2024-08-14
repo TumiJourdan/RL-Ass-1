@@ -53,7 +53,7 @@ def policy_evaluation(env, policy, discount_factor=1.0, theta=0.00001):
     return V
 
 
-def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_factor=1.0):
+def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, discount_factor=1.0):
     """
     Iteratively evaluates and improves a policy until an optimal policy is found.
 
@@ -70,6 +70,32 @@ def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_facto
         V is the value function for the optimal policy.
 
     """
+    policy_stable = False
+    while(policy_stable == False):
+        policy_eval_V = policy_evaluation_fn()
+        
+        policy = np.ones((env.observation_space.n,env.action_space.n))/4
+        print(policy)
+        policy_stable = True
+        
+        for x in range(env.observation_space.n):
+            # this line takes the action as an index from the policy [0.25,0.25,0.25,0.25]
+            old_action = np.random.choice([0,1,2,3], size = None, replace= True, p=policy[x])
+            
+            expected_rewards = one_step_lookahead(x,policy_eval_V)
+            max_reward_index = expected_rewards.index(max(expected_rewards))
+            if(old_action != max_reward_index):
+                policy_stable = False
+            else:
+                return (policy,policy_eval_V)
+            
+        
+        # Pick the action with the highest reward, and update the policy matrix, for example if right has the highest
+        # reward the row for that state is [0,1,0,0]
+        # Remember to compare the sampled action with the taken action to update the policy_stable
+        
+            
+            
 
     def one_step_lookahead(state, V):
         """
@@ -82,7 +108,24 @@ def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_facto
         Returns:
             A vector of length env.action_space.n containing the expected value of each action.
         """
-        raise NotImplementedError
+        
+        # looking at state, we need to look at actions around said state, careful boundaries
+        grid = np.arange(env.observation_space.n).reshape(env.shape)
+        it = np.nditer(grid, flags=['multi_index'])
+        MAX_Y = env.shape[0]
+        MAX_X = env.shape[1]
+        
+        s = state
+        
+        y = state // MAX_X
+        x = state % MAX_X
+        
+        ns_up = s if y == 0 else s - MAX_X
+        ns_right = s if x == (MAX_X - 1) else s + 1
+        ns_down = s if y == (MAX_Y - 1) else s + MAX_X
+        ns_left = s if x == 0 else s - 1
+        # up right down left
+        return [V[ns_up],V[ns_right],V[ns_down],V[ns_left]]
 
     raise NotImplementedError
 
