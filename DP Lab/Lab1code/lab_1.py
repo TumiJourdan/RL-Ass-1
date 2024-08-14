@@ -105,7 +105,7 @@ def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, d
         policy_eval_V = policy_evaluation_fn(env,policy)
         policy_stable = True
         
-        for x in range(env.observation_space.n):
+        for x in range(env.observation_space.n-1):
             # this line takes the action as an index from the policy [0.25,0.25,0.25,0.25]
             old_action = np.random.choice([0,1,2,3], size = None, replace= True, p=policy[x])
             
@@ -204,9 +204,15 @@ def value_iteration(env:GridworldEnv, theta=0.0001, discount_factor=1.0):
 
     return policy,V
         
-        
+def print_policy(policy):
+    policy_print = np.zeros(policy.shape[0])
 
+    for i in range(policy.shape[0]):
+        policy_print[i] = np.argmax(policy[i])
 
+    policy_print = np.reshape(policy_print, [5,5])
+    policy_print[-1][-1] = -1
+    print(policy_print)
 
 
 def main():
@@ -235,6 +241,8 @@ def main():
     v = policy_evaluation(env,rand_policy, discount_factor=1)
 
     # TODO: print state value for each state, as grid shape
+    
+    print(np.reshape(v, [*env.shape]))    
 
     # Test: Make sure the evaluated policy is what we expected
     expected_v = np.array([-106.81, -104.81, -101.37, -97.62, -95.07,
@@ -252,7 +260,12 @@ def main():
     
     # TODO Print out best action for each state in grid shape
 
+    print_policy(policy)
+    print('')
+
     # TODO: print state value for each state, as grid shape
+
+    print(np.reshape(v, [*env.shape]), '\n') 
 
     # Test: Make sure the value function is what we expected
     expected_v = np.array([-8., -7., -6., -5., -4.,
@@ -268,7 +281,12 @@ def main():
     policy, v = value_iteration(env)
     # TODO Print out best action for each state in grid shape
 
+    print_policy(policy)
+    print('')
+
     # TODO: print state value for each state, as grid shape
+
+    print(np.reshape(v, [*env.shape]), '\n') 
 
     # Test: Make sure the value function is what we expected
     expected_v = np.array([-8., -7., -6., -5., -4.,
