@@ -41,7 +41,7 @@ def policy_evaluation(env, policy, discount_factor=1.0, theta=0.00001):
             new_v = 0
             for i,a in enumerate(actions):
                 for prob, next_state, reward, done in env.P[s][i]:
-                    new_v += 1/4 * prob * (reward + discount_factor * V[next_state])
+                    new_v += a * prob * (reward + discount_factor * V[next_state])
 
             V[s] = new_v
             delta = max([delta, abs(v - V[s])])
