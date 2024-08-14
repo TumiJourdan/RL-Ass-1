@@ -33,7 +33,7 @@ def policy_evaluation(env, policy, discount_factor=1.0, theta=0.00001):
     raise NotImplementedError
 
 
-def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_factor=1.0):
+def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, discount_factor=1.0):
     """
     Iteratively evaluates and improves a policy until an optimal policy is found.
 
@@ -50,6 +50,25 @@ def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_facto
         V is the value function for the optimal policy.
 
     """
+    policy = np.ones((env.observation_space.n,env.action_space.n))/4
+    print(policy)
+    policy_stable = True
+    
+    for x in range(env.observation_space.n):
+        old_action = np.random.choice([0,1,2,3], size = None, replace= True, p=policy[x])
+        
+        max = (0,0)
+        for j in env.action_space.n:
+            # sample an action from the environment and then store its predicted reward.
+            
+            
+        
+        # Pick the action with the highest reward, and update the policy matrix, for example if right has the highest
+        # reward the row for that state is [0,1,0,0]
+        # Remember to compare the sampled action with the taken action to update the policy_stable
+        
+            
+            
 
     def one_step_lookahead(state, V):
         """
@@ -62,6 +81,9 @@ def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_facto
         Returns:
             A vector of length env.action_space.n containing the expected value of each action.
         """
+        
+        # looking at state, we need to look at actions around said state, careful boundaries
+        
         raise NotImplementedError
 
     raise NotImplementedError
