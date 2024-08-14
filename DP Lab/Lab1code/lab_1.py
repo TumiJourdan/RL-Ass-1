@@ -30,7 +30,27 @@ def policy_evaluation(env, policy, discount_factor=1.0, theta=0.00001):
     Returns:
         Vector of length env.observation_space.n representing the value function.
     """
-    raise NotImplementedError
+    V = np.zeros(env.observation_space.n)
+
+    while True:
+        delta = 0
+        for s in range(env.observation_space.n):  # Iterate over all states
+            v = V[s]
+            actions = policy[s]
+
+            new_v = 0
+            for i,a in enumerate(actions):
+                for prob, next_state, reward, done in env.P[s][i]:
+                    new_v += 1/4 * prob * (reward + discount_factor * V[next_state])
+
+            V[s] = new_v
+            delta = max([delta, abs(v - V[s])])
+
+
+        if delta < theta:
+            break
+
+    return V
 
 
 def policy_iteration(env, policy_evaluation_fn=policy_evaluation, discount_factor=1.0):
@@ -110,12 +130,20 @@ def main():
     print("")
 
     # TODO: generate random policy
+    rand_policy = np.zeros([env.observation_space.n, env.action_space.n])
+
+    for s in range(env.observation_space.n):
+        actions = np.ones(4)
+
+        actions /= sum(actions)
+
+        rand_policy[s] = actions
 
     print("*" * 5 + " Policy evaluation " + "*" * 5)
     print("")
 
     # TODO: evaluate random policy
-    v = []
+    v = policy_evaluation(env,rand_policy, discount_factor=1)
 
     # TODO: print state value for each state, as grid shape
 
