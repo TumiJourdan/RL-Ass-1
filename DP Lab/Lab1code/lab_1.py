@@ -70,33 +70,6 @@ def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, d
         V is the value function for the optimal policy.
 
     """
-    policy_stable = False
-    while(policy_stable == False):
-        policy_eval_V = policy_evaluation_fn()
-        
-        policy = np.ones((env.observation_space.n,env.action_space.n))/4
-        print(policy)
-        policy_stable = True
-        
-        for x in range(env.observation_space.n):
-            # this line takes the action as an index from the policy [0.25,0.25,0.25,0.25]
-            old_action = np.random.choice([0,1,2,3], size = None, replace= True, p=policy[x])
-            
-            expected_rewards = one_step_lookahead(x,policy_eval_V)
-            max_reward_index = expected_rewards.index(max(expected_rewards))
-            if(old_action != max_reward_index):
-                policy_stable = False
-            else:
-                return (policy,policy_eval_V)
-            
-        
-        # Pick the action with the highest reward, and update the policy matrix, for example if right has the highest
-        # reward the row for that state is [0,1,0,0]
-        # Remember to compare the sampled action with the taken action to update the policy_stable
-        
-            
-            
-
     def one_step_lookahead(state, V):
         """
         Helper function to calculate the value for all action in a given state.
@@ -110,8 +83,6 @@ def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, d
         """
         
         # looking at state, we need to look at actions around said state, careful boundaries
-        grid = np.arange(env.observation_space.n).reshape(env.shape)
-        it = np.nditer(grid, flags=['multi_index'])
         MAX_Y = env.shape[0]
         MAX_X = env.shape[1]
         
@@ -126,11 +97,36 @@ def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, d
         ns_left = s if x == 0 else s - 1
         # up right down left
         return [V[ns_up],V[ns_right],V[ns_down],V[ns_left]]
+    
+    policy_stable = False
+    policy = np.ones((env.observation_space.n,env.action_space.n))/4
+    while(policy_stable == False):
+        
+        policy_eval_V = policy_evaluation_fn(env,policy)
+        policy_stable = True
+        
+        for x in range(env.observation_space.n):
+            # this line takes the action as an index from the policy [0.25,0.25,0.25,0.25]
+            old_action = np.random.choice([0,1,2,3], size = None, replace= True, p=policy[x])
+            
+            expected_rewards = one_step_lookahead(x,policy_eval_V)
+            max_reward_index = expected_rewards.index(max(expected_rewards))
+            
+            policy[x] = [0,0,0,0]
+            policy[x][max_reward_index] = 1
+            
+            if(old_action != max_reward_index):
+                policy_stable = False
+        # Pick the action with the highest reward, and update the policy matrix, for example if right has the highest
+        # reward the row for that state is [0,1,0,0]
+        # Remember to compare the sampled action with the taken action to update the policy_stable
+                 
+    
 
-    raise NotImplementedError
+    return (policy,policy_eval_V)
 
 
-def value_iteration(env, theta=0.0001, discount_factor=1.0):
+def value_iteration(env:GridworldEnv, theta=0.0001, discount_factor=1.0):
     """
     Value Iteration Algorithm.
 
@@ -158,9 +154,59 @@ def value_iteration(env, theta=0.0001, discount_factor=1.0):
         Returns:
             A vector of length env.action_space.n containing the expected value of each action.
         """
-        raise NotImplementedError
+        MAX_Y = env.shape[0]
+        MAX_X = env.shape[1]
+        
+        s = state
+        
+        y = state // MAX_X
+        x = state % MAX_X
+        
+        ns_up = s if y == 0 else s - MAX_X
+        ns_right = s if x == (MAX_X - 1) else s + 1
+        ns_down = s if y == (MAX_Y - 1) else s + MAX_X
+        ns_left = s if x == 0 else s - 1
+        # up right down left
+        return [V[ns_up],V[ns_right],V[ns_down],V[ns_left]]
 
-    raise NotImplementedError
+    V = np.zeros(env.observation_space.n)
+    count = 1
+    while True:
+        delta = 0
+        for s in range(env.observation_space.n-1):  # Iterate over all states
+            v = V[s]
+            # possible actions
+            actions = [0,1,2,3]
+            new_v = []
+            for i,a in enumerate(actions):
+                result = 0
+                for prob, next_state, reward, done in env.P[s][i]:
+                    result += 1 * prob * (reward + discount_factor * V[next_state])
+                new_v.append(result)           
+            max_reward_index = new_v.index(max(new_v))
+            V[s] = max(new_v)
+
+            delta = max([delta, abs(v - V[s])])
+        # debugging purposes    
+
+        if delta < theta:
+            break
+        
+    # determine greedy policy
+    policy = np.zeros((env.observation_space.n,env.action_space.n))
+    
+    for s in range(env.observation_space.n):
+        expected_rewards = one_step_lookahead(s,V)
+        max_reward_index = expected_rewards.index(max(expected_rewards))
+        
+        policy[s] = [0,0,0,0]
+        policy[s][max_reward_index] = 1
+
+    return policy,V
+        
+        
+
+
 
 
 def main():
@@ -201,8 +247,9 @@ def main():
     print("*" * 5 + " Policy iteration " + "*" * 5)
     print("")
     # TODO: use  policy improvement to compute optimal policy and state values
-    policy, v = [], []  # call policy_iteration
-
+    policy, v = policy_iteration(env,policy_evaluation_fn=policy_evaluation)
+    # call policy_iteration
+    
     # TODO Print out best action for each state in grid shape
 
     # TODO: print state value for each state, as grid shape
@@ -218,8 +265,7 @@ def main():
     print("*" * 5 + " Value iteration " + "*" * 5)
     print("")
     # TODO: use  value iteration to compute optimal policy and state values
-    policy, v = [], []  # call value_iteration
-
+    policy, v = value_iteration(env)
     # TODO Print out best action for each state in grid shape
 
     # TODO: print state value for each state, as grid shape
