@@ -214,6 +214,42 @@ def print_policy(policy):
     policy_print[-1][-1] = -1
     print(policy_print)
 
+def action2letter(num):
+    if num == 0:
+        return 'U'
+    elif num == 1:
+        return 'R'
+    elif num == 2:
+        return 'D'
+    else:
+        return "L"
+    
+def create_trajectory(env, num_moves, state):
+
+    map = [[0 for j in range(env.shape[0])] for i in range(env.shape[1])]
+
+    UP = 0
+    RIGHT = 1
+    DOWN = 2
+    LEFT = 3
+    availible_moves = [UP,RIGHT,DOWN,LEFT]
+
+
+    for i in range(num_moves):
+
+        action = np.random.choice(availible_moves)
+
+        map[int(state//env.shape[0])][int(state%env.shape[1])] = action2letter(action)
+
+        state_, reward, done, _ = env.step(action)
+
+        state = state_
+
+    map[int(state//env.shape[0])][int(state%env.shape[1])] = 'X'
+
+    for i in range(env.shape[0]):
+        print(map[i])
+
 
 def main():
     # Create Gridworld environment with size of 5 by 5, with the goal at state 24. Reward for getting to goal state is 0, and each step reward is -1
@@ -223,6 +259,13 @@ def main():
     print("")
     env.render()
     print("")
+
+    # Queston 1
+
+    print('Question 1 Trajectory')
+
+    create_trajectory(env, 5, state)
+
 
     # TODO: generate random policy
     rand_policy = np.zeros([env.observation_space.n, env.action_space.n])
