@@ -10,6 +10,7 @@ import numpy as np
 from environments.gridworld import GridworldEnv
 import timeit
 import matplotlib.pyplot as plt
+import time
 
 
 def policy_evaluation(env, policy, discount_factor=1.0, theta=0.00001):
@@ -102,7 +103,7 @@ def policy_iteration(env:GridworldEnv, policy_evaluation_fn=policy_evaluation, d
     policy = np.ones((env.observation_space.n,env.action_space.n))/4
     while(policy_stable == False):
         
-        policy_eval_V = policy_evaluation_fn(env,policy)
+        policy_eval_V = policy_evaluation_fn(env,policy,discount_factor = discount_factor)
         policy_stable = True
         
         for x in range(env.observation_space.n-1):
@@ -338,7 +339,51 @@ def main():
                            -5., -4., -3., -2., -1.,
                            -4., -3., -2., -1., 0.])
     np.testing.assert_array_almost_equal(v, expected_v, decimal=1)
+    # QUestion 4.1.2
+    values = np.logspace(-0.2, 0, num=30)
+    results_policy = np.zeros(len(values))
+    results_value = np.zeros(len(values))
+    for discount_index in range(len(values)):
+        policy_it_total_time = 0
+        value_it_total_time = 0
+        print(values[discount_index])
+        for y in range(10):
+            # Policy Iteration
+            env.reset()
+            start_time = time.time()
+            policy_iteration(env,policy_evaluation,values[discount_index])
+            end_time = time.time()
+            policy_it_total_time += end_time - start_time
+            # Value Iteration
+            env.reset()
+            start_time = time.time()
+            value_iteration(env,theta=0.0001,discount_factor=values[discount_index])
+            end_time = time.time()
+            value_it_total_time += end_time - start_time
+        policy_average_run = policy_it_total_time/10
+        value_average_run = value_it_total_time/10
+        results_policy[discount_index] = policy_average_run
+        results_value[discount_index] = value_average_run
+    print("Average policy :", results_policy)
+    print("Average value :", results_value)
+    # Plotting
+    values = np.logspace(-0.2, 0, num=30)
 
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.plot(values, results_policy, label='Policy Iteration', marker='o')
+    plt.plot(values, results_value, label='Value Iteration', marker='s')
 
+    # Adding labels and title
+    plt.xlabel('Discount Factor')
+    plt.ylabel('Average Runtime (seconds)')
+    plt.title('Comparison of Policy Iteration and Value Iteration Runtimes')
+    plt.xscale('log')  # Logarithmic scale for the x-axis
+    plt.legend()
+    plt.grid(True)
+
+    # Show the plot
+    plt.show()
+    
 if __name__ == "__main__":
     main()
