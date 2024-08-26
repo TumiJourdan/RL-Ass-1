@@ -1,9 +1,9 @@
 ###
 # Group Members
-# Name:Student Number
-# Name:Student Number
-# Name:Student Number
-# Name:Student Number
+# Shakeel Malagas: 2424161 
+# Tumi Jourdan: 2180153
+# Dean Solomon: 2347848
+# Tao Yuan: 2332155
 ###
 
 import numpy as np
