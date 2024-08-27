@@ -42,8 +42,8 @@ def eps_greedy(V, state, eps,env):
 
 
 
-def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps, save_folder):
-    list=[]
+def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps, save_folder=None):
+    return_array= np.array([])
     
     V = np.zeros(env.observation_space.n)
 
@@ -81,20 +81,21 @@ def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps, save_folder):
             if (row == 3 and col == 11):
                 break
 
-        plt.imshow(np.reshape(V,[4,12]))
+        if save_folder is not None:
+            plt.imshow(np.reshape(V,[4,12]))
 
-        plt.colorbar() 
+            plt.colorbar() 
 
-        plt.title( "2-D Heat Map" ) 
-        plt.savefig(f"./{save_folder}/episode{episode}.png") 
-        plt.close()
+            plt.title( "2-D Heat Map" ) 
+            plt.savefig(f"./{save_folder}/episode{episode}.png") 
+            plt.close()
             
         if episode > 989:
             print("Episode:", episode, "Total Reward:", total_reward, "Path:", visited_states)
             
-        list.append(total_reward)
+        return_array = np.append(return_array,total_reward)
         # print(V)
-    return list
+    return return_array
 
 env = gym.make('CliffWalking-v0',) #render_mode = 'human'
 
@@ -103,15 +104,54 @@ alpha = 0.1
 eps = 0.1
 decay_rate = 0
 
-rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td0')
+# rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td0')
 
-decay_rate = 0.3
+# decay_rate = 0.3
 
-rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td1')
+# rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td1')
 
-decay_rate = 0.5
+# decay_rate = 0.5
 
-rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td2')
+# rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td2')
 
+td0_return = np.array([])
+td1_return = np.array([])
+td2_return = np.array([])
+runs = 2
+episodes = 20
 
+for i in range(runs):
+    print(f"run {i}")
+    decay_rate = 0
+    td0_return = np.append(td0_return, sarsa(episodes,env,gamma,alpha,decay_rate,eps)) 
+    
+    decay_rate = 0.3
+    td1_return = np.append(td1_return, sarsa(episodes,env,gamma,alpha,decay_rate,eps))
+    
+    decay_rate = 0.5
+    td2_return = np.append(td2_return, sarsa(episodes,env,gamma,alpha,decay_rate,eps))
 
+td0_return = np.reshape(td0_return, [runs,episodes])
+td1_return = np.reshape(td1_return, [runs,episodes])
+td2_return = np.reshape(td2_return, [runs,episodes])
+
+td0_return_mean = np.mean(td0_return, axis=0)
+td1_return_mean = np.mean(td1_return, axis=0)
+td2_return_mean = np.mean(td2_return, axis=0)
+
+td0_return_var = np.var(td0_return,axis=0)
+td1_return_var = np.var(td1_return,axis=0)
+td2_return_var = np.var(td2_return,axis=0)
+
+print(f'{td0_return_var=}')
+
+t=[i for i in range(episodes)]
+
+# plt.plot(t, td0_return_mean, label='Average Return ofr lamba=0', linestyle='-')
+# plt.fill_between(t, td0_return_mean - td0_return_var, td0_return_mean + td0_return_var, alpha=0.2)
+# plt.plot(t, td1_return_mean, label='Average Return ofr lamba=0.3', linestyle='-.')
+# plt.fill_between(t, td1_return_mean - td1_return_var, td1_return_mean + td1_return_var, alpha=0.2)
+# plt.plot(t, td2_return_mean, label='Average Return ofr lamba=0.5')
+# plt.fill_between(t, td2_return_mean - td2_return_var, td2_return_mean + td2_return_var, alpha=0.2)
+# plt.legend()
+# plt.show()
