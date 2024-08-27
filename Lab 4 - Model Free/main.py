@@ -42,7 +42,7 @@ def eps_greedy(V, state, eps,env):
 
 
 
-def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps):
+def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps, save_folder):
     list=[]
     
     V = np.zeros(env.observation_space.n)
@@ -60,7 +60,7 @@ def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps):
             
             ### RENDER #######
             env.render()
-            time.sleep(0.1)
+            # time.sleep(0.1)
             ### RENDER #######
             
             delta = reward + gamma * V[next_state] - V[state]
@@ -80,22 +80,38 @@ def sarsa(num_episodes, env:gym.Env, gamma, alpha,decay_rate, eps):
             
             if (row == 3 and col == 11):
                 break
+
+        plt.imshow(np.reshape(V,[4,12]))
+
+        plt.colorbar() 
+
+        plt.title( "2-D Heat Map" ) 
+        plt.savefig(f"./{save_folder}/episode{episode}.png") 
+        plt.close()
             
         if episode > 989:
             print("Episode:", episode, "Total Reward:", total_reward, "Path:", visited_states)
             
         list.append(total_reward)
-        print(V)
+        # print(V)
     return list
 
-env = gym.make('CliffWalking-v0',render_mode = 'human')
+env = gym.make('CliffWalking-v0',) #render_mode = 'human'
 
 gamma = 0.99
 alpha = 0.1
 eps = 0.1
-decay_rate = 0.2
+decay_rate = 0
 
-rewards = sarsa(10000,env,gamma,alpha,decay_rate,eps)
+rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td0')
+
+decay_rate = 0.3
+
+rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td1')
+
+decay_rate = 0.5
+
+rewards = sarsa(200,env,gamma,alpha,decay_rate,eps, 'td2')
 
 
 
