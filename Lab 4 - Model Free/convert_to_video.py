@@ -29,6 +29,12 @@ for image_path in td2_paths:
     image=cv2.imread(image_path)
     image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     td2_images.append(image)
+
+
+imageio.mimsave('td0.gif',td0_images,'GIF',duration = 500)
+imageio.mimsave('td1.gif',td1_images,'GIF',duration = 500)
+imageio.mimsave('td2.gif',td2_images,'GIF',duration = 500)
+
 print(len(td0_images))
 print(len(td1_images))
 print(len(td2_images))
