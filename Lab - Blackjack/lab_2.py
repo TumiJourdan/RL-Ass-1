@@ -161,8 +161,7 @@ def blackjack_sample_policy(observation):
     """
     A policy that sticks if the player score is >= 20 and hits otherwise.
     """
-    print(f'{observation=}')
-    if observation[0][0] < 20:
+    if observation[0] < 20:
         return 1
     else:
         return 0
@@ -185,53 +184,42 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
         The state is a tuple and the value is a float.
     """
 
-    V = {}
-    Returns = {}
+    V = {(i,j,k):0 for i in range(32) for j in range(11) for k in range(2)}
+    Returns = {(i,j,k):np.array([]) for i in range(32) for j in range(11) for k in range(2)}
 
     for eps in range(num_episodes):
-        state = env.reset()
+        state, _ = env.reset()
         action = policy(state)
         done = False
         total_reward = 0
 
-        episode = np.array([])
+        episode = []
 
         for i in range(max_steps_per_episode):
             next_state, reward, done, _, _ = env.step(action)
 
             next_action = policy(next_state)
 
-            episode = np.vstack(episode, [state, action, reward, next_state, next_action])
+            episode.append([state, action, reward, next_state, next_action])
 
             if done:
                 break
 
             action = next_action
-
         
         for e in reversed(episode):
-            total_reward += discount_factor*total_reward + e.reward
+            total_reward += discount_factor*total_reward + e[2]
 
-            if any(e.state == episode[:-1,0]):
+            if len(episode[:-1]) and any(e[0] == e_[0] for e_ in episode[:-1]):
                 break
             
-            try:
-                Returns[e.state] = np.append(Returns[e.state], total_reward)
+            Returns[e[0]] = np.append(Returns[e[0]], total_reward)
                 
-            except:
-                Returns[e.state] = np.array([total_reward])
+                # Returns[e[0]] = np.array([total_reward])
                 
-            V[e.state] = np.average(Returns[e.state])
+            V[e[0]] = np.average(Returns[e[0]])
 
-
-
-            
-                   
-               
-
-
-    raise NotImplementedError
-
+    return V
 
 def argmax(numpy_array):
     """ argmax implementation that chooses randomly between ties """
