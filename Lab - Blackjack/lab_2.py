@@ -23,7 +23,7 @@ EpisodeStats = namedtuple("Stats", ["episode_lengths", "episode_rewards"])
 
 # Helper functions
 ##################
-def blackjack_plot_value_function(V, title="Value Function", suptitle="MC Blackjack-v0"):
+def blackjack_plot_value_function(V, title="Value Function", suptitle="MC blackjack-v1"):
     """
     Plots the value function as a surface plot.
     """
@@ -161,7 +161,11 @@ def blackjack_sample_policy(observation):
     """
     A policy that sticks if the player score is >= 20 and hits otherwise.
     """
-    raise NotImplementedError
+    print(f'{observation=}')
+    if observation[0][0] < 20:
+        return 1
+    else:
+        return 0
 
 
 def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_episode=9999, print_=False):
@@ -180,6 +184,51 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
         A dictionary that maps from state -> value.
         The state is a tuple and the value is a float.
     """
+
+    V = {}
+    Returns = {}
+
+    for eps in range(num_episodes):
+        state = env.reset()
+        action = policy(state)
+        done = False
+        total_reward = 0
+
+        episode = np.array([])
+
+        for i in range(max_steps_per_episode):
+            next_state, reward, done, _, _ = env.step(action)
+
+            next_action = policy(next_state)
+
+            episode = np.vstack(episode, [state, action, reward, next_state, next_action])
+
+            if done:
+                break
+
+            action = next_action
+
+        
+        for e in reversed(episode):
+            total_reward += discount_factor*total_reward + e.reward
+
+            if any(e.state == episode[:-1,0]):
+                break
+            
+            try:
+                Returns[e.state] = np.append(Returns[e.state], total_reward)
+                
+            except:
+                Returns[e.state] = np.array([total_reward])
+                
+            V[e.state] = np.average(Returns[e.state])
+
+
+
+            
+                   
+               
+
 
     raise NotImplementedError
 
@@ -303,8 +352,8 @@ def q_learning(env, num_episodes, discount_factor=1.0, epsilon=0.05, alpha=0.5, 
 
 def run_mc():
     # Exploring the BlackjackEnv
-    # create env from https://gym.openai.com/envs/Blackjack-v0/
-    blackjack_env = gym.make('Blackjack-v0')
+    # create env from https://gym.openai.com/envs/blackjack-v1/
+    blackjack_env = gym.make('Blackjack-v1')
     # let's see what's hidden inside this Object
     print(vars(blackjack_env))
 
@@ -320,7 +369,7 @@ def run_mc():
     random_action = blackjack_env.action_space.sample()
     print('random action:', random_action)
     # let's simulate one action
-    next_observation, reward, done, _ = blackjack_env.step(random_action)
+    next_observation, reward, done, _, _ = blackjack_env.step(random_action)
     print('next_observation:', next_observation)
     print('reward:', reward)
     print('done:', done)
