@@ -295,7 +295,7 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
         episode = []
 
         for i in range(max_steps_per_episode):
-            print("action start", action)
+
             next_state, reward, done, _, _ = env.step(action)
 
             next_action = argmax(policy(next_state))
@@ -303,12 +303,9 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
             episode.append([state, action, reward, next_state, next_action])
 
             if done:
-                print("Break")
                 break
-            
-            print("action before", action)
+
             action = next_action
-            print("action after", action)
             
         for e in reversed(episode):
             temp = []
@@ -319,13 +316,13 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
             total_reward += discount_factor*total_reward + e[2]
             if (len(episode[:-1])>=0) and any(e[:2] == e_[:2] for e_ in episode[:-1]):
                 break
-            else: 
+            else:
+
                 Returns[temp] = np.append(Returns[temp], total_reward)
-                Q[temp] = np.mean(Returns[temp])
+                Q[e[0]] = np.mean(Returns[temp])
                 policy = make_epsilon_greedy_policy(Q,epsilon=0.1,nA=env.action_space.n)
                 
-        print("action after 2", action)
-    return Q,policy    
+    return Q,policy
 
 
 
@@ -440,7 +437,6 @@ def run_mc():
     # For plotting: Create value function from action-value function
     # by picking the best action at each state
     values = defaultdict(float)
-    print(list(Q.values())[:10])
     for state, actions in Q.items():
         action_value = np.max(actions)
         values[state] = action_value
