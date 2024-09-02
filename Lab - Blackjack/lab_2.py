@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import gym
+import gymnasium as gym
 
 EpisodeStats = namedtuple("Stats", ["episode_lengths", "episode_rewards"])
 
@@ -223,8 +223,13 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
 
 def argmax(numpy_array):
     """ argmax implementation that chooses randomly between ties """
-    raise NotImplementedError
+    # numpy array (probably size of action space)
+    
+    max_value = np.max(numpy_array)
+    max_indices = np.where(numpy_array == max_value)[0]
+    return np.random.choice(max_indices)
 
+    
 
 def make_epsilon_greedy_policy(Q, epsilon, nA):
     """
@@ -241,8 +246,21 @@ def make_epsilon_greedy_policy(Q, epsilon, nA):
         the probabilities for each action in the form of a numpy array of length nA.
 
     """
+    
+    # Q is a dictionary, tuple keys, array values. Here x is the value, and we set each value (y) to zero
+    
+    def policy_fn(observation):
+        random_float = np.random.rand()
+        
+        actions = np.array([epsilon/nA for i in range(nA)])
+        
+        if (random_float>epsilon):
+            actions[argmax(Q[observation])] = 1-epsilon + epsilon/nA
+            return actions
+        else:
+            actions[np.random.choice(nA)] = 1-epsilon + epsilon/nA
+            return actions
 
-    raise NotImplementedError
     return policy_fn
 
 
@@ -264,7 +282,51 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
         policy is a function that takes an observation as an argument and returns
         action probabilities
     """
-    raise NotImplementedError
+    Q = {(i,j,k):np.zeros(env.action_space.n) for i in range(32) for j in range(11) for k in range(2)}
+    Returns = {(i,j,k,a):np.array([]) for i in range(32) for j in range(11) for k in range(2) for a in range(env.action_space.n)}
+    policy = make_epsilon_greedy_policy(Q,0.1,env.action_space.n)
+    
+    for eps in range(num_episodes):
+        state, _ = env.reset()
+        action = argmax(policy(state))
+        done = False
+        total_reward = 0
+
+        episode = []
+
+        for i in range(max_steps_per_episode):
+            print("action start", action)
+            next_state, reward, done, _, _ = env.step(action)
+
+            next_action = argmax(policy(next_state))
+
+            episode.append([state, action, reward, next_state, next_action])
+
+            if done:
+                print("Break")
+                break
+            
+            print("action before", action)
+            action = next_action
+            print("action after", action)
+            
+        for e in reversed(episode):
+            temp = []
+            for p in range(len(e[0])):
+                temp.append(e[0][p])
+            temp.append(e[1])  
+            temp = tuple(temp)
+            total_reward += discount_factor*total_reward + e[2]
+            if (len(episode[:-1])>=0) and any(e[:2] == e_[:2] for e_ in episode[:-1]):
+                break
+            else: 
+                Returns[temp] = np.append(Returns[temp], total_reward)
+                Q[temp] = np.mean(Returns[temp])
+                policy = make_epsilon_greedy_policy(Q,epsilon=0.1,nA=env.action_space.n)
+                
+        print("action after 2", action)
+    return Q,policy    
+
 
 
 def SARSA(env, num_episodes, discount_factor=1.0, epsilon=0.1, alpha=0.5, print_=False):
@@ -362,27 +424,27 @@ def run_mc():
     print('reward:', reward)
     print('done:', done)
 
-    print("\nmc_prediction 10,000_steps\n")
-    values_10k = mc_prediction(
-        blackjack_sample_policy, blackjack_env, num_episodes=10000, print_=True)
-    blackjack_plot_value_function(values_10k, title="10,000 Steps")
+    # print("\nmc_prediction 10,000_steps\n")
+    # values_10k = mc_prediction(
+    #     blackjack_sample_policy, blackjack_env, num_episodes=10000, print_=True)
+    # blackjack_plot_value_function(values_10k, title="10,000 Steps")
 
-    print("\nmc_prediction 500,000_steps\n")
-    values_500k = mc_prediction(
-        blackjack_sample_policy, blackjack_env, num_episodes=500000, print_=True)
-    blackjack_plot_value_function(values_500k, title="500,000 Steps")
+    # print("\nmc_prediction 500,000_steps\n")
+    # values_500k = mc_prediction(
+    #     blackjack_sample_policy, blackjack_env, num_episodes=500000, print_=True)
+    # blackjack_plot_value_function(values_500k, title="500,000 Steps")
 
     print("\nmc_control_epsilon_greedy\n")
     Q, policy = mc_control_epsilon_greedy(
-        blackjack_env, num_episodes=500000, epsilon=0.1, print_=True)
+        blackjack_env, num_episodes=1000, epsilon=0.1, print_=True)
     # For plotting: Create value function from action-value function
     # by picking the best action at each state
     values = defaultdict(float)
+    print(list(Q.values())[:10])
     for state, actions in Q.items():
         action_value = np.max(actions)
         values[state] = action_value
     blackjack_plot_value_function(values, title="Optimal Value Function")
-
 
 def run_td():
     num_episodes = 1000
