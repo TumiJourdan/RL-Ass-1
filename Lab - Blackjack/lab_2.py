@@ -184,8 +184,8 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
         The state is a tuple and the value is a float.
     """
 
-    V = {(i,j,k):0 for i in range(32) for j in range(11) for k in range(2)}
-    Returns = {(i,j,k):np.array([]) for i in range(32) for j in range(11) for k in range(2)}
+    V = defaultdict(float)
+    Returns = defaultdict(list)
 
     for eps in range(num_episodes):
         state, _ = env.reset()
@@ -198,25 +198,27 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
         for i in range(max_steps_per_episode):
             next_state, reward, done, _, _ = env.step(action)
 
-            next_action = policy(next_state)
+            episode.append([state, reward])
 
-            episode.append([state, action, reward, next_state, next_action])
+            action = policy(state)
 
             if done:
                 break
 
-            action = next_action
+            state = next_state
         
-        for e in reversed(episode):
-            total_reward += discount_factor*total_reward + e[2]
+        eps_len = len(episode)
 
-            if len(episode[:-1]) and any(e[0] == e_[0] for e_ in episode[:-1]):
+        for t in range(eps_len):
+            e = episode.pop()
+            total_reward = discount_factor*total_reward + e[1]
+
+            if len(episode) and any(e[0] == e_[0] for e_ in episode):
+                # print('test')
                 break
             
-            Returns[e[0]] = np.append(Returns[e[0]], total_reward)
-                
-                # Returns[e[0]] = np.array([total_reward])
-                
+            Returns[e[0]].append(total_reward)
+                                
             V[e[0]] = np.average(Returns[e[0]])
 
     return V
@@ -282,8 +284,8 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
         policy is a function that takes an observation as an argument and returns
         action probabilities
     """
-    Q = {(i,j,k):np.zeros(env.action_space.n) for i in range(32) for j in range(11) for k in range(2)}
-    Returns = {(i,j,k,a):np.array([]) for i in range(32) for j in range(11) for k in range(2) for a in range(env.action_space.n)}
+    Q = defaultdict(lambda: np.zeros(env.action_space.n, dtype=float))
+    Returns = defaultdict(float)
     policy = make_epsilon_greedy_policy(Q,0.1,env.action_space.n)
     
     for eps in range(num_episodes):
@@ -298,29 +300,56 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
 
             next_state, reward, done, _, _ = env.step(action)
 
-            next_action = argmax(policy(next_state))
-
-            episode.append([state, action, reward, next_state, next_action])
+            episode.append([state, action, reward])
 
             if done:
                 break
 
-            action = next_action
-            
-        for e in reversed(episode):
-            temp = []
-            for p in range(len(e[0])):
-                temp.append(e[0][p])
-            temp.append(e[1])  
-            temp = tuple(temp)
-            total_reward += discount_factor*total_reward + e[2]
-            if (len(episode[:-1])>=0) and any(e[:2] == e_[:2] for e_ in episode[:-1]):
-                break
-            else:
+            action = argmax(policy(next_state))
 
-                Returns[temp] = np.append(Returns[temp], total_reward)
-                Q[e[0]] = np.mean(Returns[temp])
-                policy = make_epsilon_greedy_policy(Q,epsilon=0.1,nA=env.action_space.n)
+            state = next_state
+
+        eps_len = len(episode)
+
+        for t in range(eps_len):
+            e = episode.pop()
+            total_reward = discount_factor*total_reward + e[2]
+
+            if len(episode) and any(e[:2] == e_[:2] for e_ in episode):
+                # print('test')
+                break
+
+            state = e[0]
+            action = e[1]
+
+            if (state, action) in Returns.keys():
+                    Returns[state, action].append(total_reward)
+            else:
+                Returns[state, action] = [total_reward]
+
+            Q[state][action] = np.average(Returns[state, action])
+
+
+            # Returns[e[0]][e[1]] += np.array([total_reward, 1])
+
+            # Q[e[0]][e[1]] = Returns[e[0]][e[1]][0]/Returns[e[0]][e[1]][1] # Mean
+
+            # policy = make_epsilon_greedy_policy(Q,epsilon=0.1,nA=env.action_space.n)
+
+        # for e in reversed(episode):
+        #     temp = []
+        #     for p in range(len(e[0])):
+        #         temp.append(e[0][p])
+        #     temp.append(e[1])  
+        #     temp = tuple(temp)
+        #     total_reward = discount_factor*total_reward + e[2]
+        #     if (len(episode[:-1])>=0) and any(e[:2] == e_[:2] for e_ in episode[:-1]):
+        #         break
+        #     else:
+
+        #         Returns[temp] = np.append(Returns[temp], total_reward)
+        #         Q[e[0]] = np.mean(Returns[temp])
+        #         policy = make_epsilon_greedy_policy(Q,epsilon=0.1,nA=env.action_space.n)
                 
     return Q,policy
 
@@ -421,19 +450,19 @@ def run_mc():
     print('reward:', reward)
     print('done:', done)
 
-    # print("\nmc_prediction 10,000_steps\n")
-    # values_10k = mc_prediction(
-    #     blackjack_sample_policy, blackjack_env, num_episodes=10000, print_=True)
-    # blackjack_plot_value_function(values_10k, title="10,000 Steps")
+    print("\nmc_prediction 10,000_steps\n")
+    values_10k = mc_prediction(
+        blackjack_sample_policy, blackjack_env, num_episodes=10000, print_=True)
+    blackjack_plot_value_function(values_10k, title="10,000 Steps")
 
-    # print("\nmc_prediction 500,000_steps\n")
-    # values_500k = mc_prediction(
-    #     blackjack_sample_policy, blackjack_env, num_episodes=500000, print_=True)
-    # blackjack_plot_value_function(values_500k, title="500,000 Steps")
+    print("\nmc_prediction 500,000_steps\n")
+    values_500k = mc_prediction(
+        blackjack_sample_policy, blackjack_env, num_episodes=500000, print_=True)
+    blackjack_plot_value_function(values_500k, title="500,000 Steps")
 
     print("\nmc_control_epsilon_greedy\n")
     Q, policy = mc_control_epsilon_greedy(
-        blackjack_env, num_episodes=1000, epsilon=0.1, print_=True)
+        blackjack_env, num_episodes=500000, epsilon=0.1, print_=True)
     # For plotting: Create value function from action-value function
     # by picking the best action at each state
     values = defaultdict(float)
