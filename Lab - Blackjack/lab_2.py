@@ -200,7 +200,7 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
 
             episode.append([state, reward])
 
-            action = policy(state)
+            action = policy(next_state)
 
             if done:
                 break
