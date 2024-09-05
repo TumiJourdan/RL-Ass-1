@@ -530,8 +530,6 @@ def run_td():
     td_plot_values(sarsa_q_values, "SARSA")
     print('')
 
-    input()
-
     print('Q learning\n')
     ql_q_values, stats_q_learning = q_learning(cliffwalking_env, num_episodes=num_episodes,
                                                discount_factor=discount_factor,
