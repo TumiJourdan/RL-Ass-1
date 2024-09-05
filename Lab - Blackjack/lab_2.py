@@ -383,13 +383,33 @@ def SARSA(env, num_episodes, discount_factor=1.0, epsilon=0.1, alpha=0.5, print_
     stats = EpisodeStats(
         episode_lengths=np.zeros(num_episodes),
         episode_rewards=np.zeros(num_episodes))
+    
+    for i_episode in range(num_episodes):
 
-    # Update statistics after getting a reward - use within loop, call the following lines
-    # stats.episode_rewards[i_episode] += reward
-    # stats.episode_lengths[i_episode] = t
+        # print(f'{i_episode}')
+        state, _ = env.reset()  # Extract the integer state from the tuple
+        done = False
+        total_reward = 0
+        t=0
+        action = argmax(policy(state))
 
-    raise NotImplementedError
+        while not done:
+            next_state, reward, done, _, _ = env.step(action)
 
+            next_action = argmax(policy(next_state))
+            td_error = reward + discount_factor * Q[next_state][next_action] - Q[state][action]
+            Q[state][action] += alpha * td_error
+            state = next_state
+            action = next_action
+            total_reward += reward
+
+            t += 1
+
+        # Update statistics after getting a reward - use within loop, call the following lines
+        stats.episode_rewards[i_episode] += reward
+        stats.episode_lengths[i_episode] = t
+
+    return Q, stats
 
 def q_learning(env, num_episodes, discount_factor=1.0, epsilon=0.05, alpha=0.5, print_=False):
     """
@@ -419,12 +439,32 @@ def q_learning(env, num_episodes, discount_factor=1.0, epsilon=0.05, alpha=0.5, 
     # Keeps track of useful statistics
     stats = EpisodeStats(
         episode_lengths=np.zeros(num_episodes),
-        episode_rewards=np.zeros(num_episodes))
+        episode_rewards=np.zeros(num_episodes)) 
+    
+    for i_episode in range(num_episodes):
+        state, _ = env.reset()  # Extract the integer state from the tuple
+        done = False
+        total_reward = 0
+        t=0
 
-    # Update statistics after getting a reward - use within loop, call the following lines
-    # stats.episode_rewards[i_episode] += reward
-    # stats.episode_lengths[i_episode] = t
 
+        while not done:
+            action = argmax(policy(state))
+            next_state, reward, done, _, _ = env.step(action)
+
+            next_state = next_state
+            next_action = np.argmax(Q[next_state])  # Update this line
+            td_error = reward + discount_factor * Q[next_state][next_action] - Q[state][action]
+            Q[state][action] += alpha * td_error
+            state = next_state
+            total_reward += reward
+            t += 1
+
+        # Update statistics after getting a reward - use within loop, call the following lines
+        stats.episode_rewards[i_episode] += reward
+        stats.episode_lengths[i_episode] = t
+
+    return Q, stats
 
 def run_mc():
     # Exploring the BlackjackEnv
@@ -479,6 +519,7 @@ def run_td():
 
     # create env : https://github.com/openai/gym/blob/master/gym/envs/toy_text/cliffwalking.py
     cliffwalking_env = gym.make('CliffWalking-v0')
+    cliffwalking_env.reset()
     cliffwalking_env.render()
 
     print('SARSA\n')
@@ -488,6 +529,8 @@ def run_td():
     td_plot_episode_stats(stats_sarsa, "SARSA")
     td_plot_values(sarsa_q_values, "SARSA")
     print('')
+
+    input()
 
     print('Q learning\n')
     ql_q_values, stats_q_learning = q_learning(cliffwalking_env, num_episodes=num_episodes,
@@ -500,5 +543,5 @@ def run_td():
 
 
 if __name__ == '__main__':
-    run_mc()
+    # run_mc()
     run_td()
