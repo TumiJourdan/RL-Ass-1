@@ -1,9 +1,9 @@
 ###
 # Group Members
-# Name:Student Number
-# Name:Student Number
-# Name:Student Number
-# Name:Student Number
+# Shakeel Malagas: 2424161 
+# Tumi Jourdan: 2180153
+# Dean Solomon: 2347848
+# Tao Yuan: 2332155
 ###
 
 
@@ -188,6 +188,10 @@ def mc_prediction(policy, env, num_episodes, discount_factor=1.0, max_steps_per_
     Returns = defaultdict(list)
 
     for eps in range(num_episodes):
+        
+        if print_:
+            print(eps)
+        
         state, _ = env.reset()
         action = policy(state)
         done = False
@@ -289,6 +293,8 @@ def mc_control_epsilon_greedy(env, num_episodes, discount_factor=1.0, epsilon=0.
     policy = make_epsilon_greedy_policy(Q,0.1,env.action_space.n)
     
     for eps in range(num_episodes):
+        if print_:
+            print(eps)
         state, _ = env.reset()
         action = argmax(policy(state))
         done = False
@@ -385,8 +391,10 @@ def SARSA(env, num_episodes, discount_factor=1.0, epsilon=0.1, alpha=0.5, print_
         episode_rewards=np.zeros(num_episodes))
     
     for i_episode in range(num_episodes):
-
-        # print(f'{i_episode}')
+        
+        if print_:
+            print(f'{i_episode}')
+        
         state, _ = env.reset()  # Extract the integer state from the tuple
         done = False
         total_reward = 0
@@ -442,6 +450,10 @@ def q_learning(env, num_episodes, discount_factor=1.0, epsilon=0.05, alpha=0.5, 
         episode_rewards=np.zeros(num_episodes)) 
     
     for i_episode in range(num_episodes):
+        
+        if print_:
+            print(i_episode)
+        
         state, _ = env.reset()  # Extract the integer state from the tuple
         done = False
         total_reward = 0
@@ -514,7 +526,7 @@ def run_mc():
 def run_td():
     num_episodes = 1000
     discount_factor = 1.0
-    epsilon = 0.1
+    epsilon = 0
     alpha = 0.5
 
     # create env : https://github.com/openai/gym/blob/master/gym/envs/toy_text/cliffwalking.py
@@ -543,3 +555,15 @@ def run_td():
 if __name__ == '__main__':
     run_mc()
     run_td()
+
+
+# Question 4
+# Optimal learns an overall smaller gradient relative to the mc. 
+# This is due to Optimal exploring (epsilon) while mc has a presumptive hardcoded policy which forces suboptimal actions.
+# MC is aiming to get 20 or 21, while optimal explores other avenues of winning.
+
+# Question 5
+# Q learning just aswell before and SARSA does abit better. 
+
+# Question 6
+# Agent will always take what it thinks is the most optimal action (no exploration).
