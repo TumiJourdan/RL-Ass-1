@@ -8,7 +8,7 @@
 from math import floor
 import numpy as np
 from gym.spaces import Discrete
-
+import gymnasium as gym
 
 class IHT:
     "Structure to handle collisions"
@@ -130,3 +130,15 @@ class ValueFunction:
             return self.action_space.sample()
         return np.argmax([self(state, action) for action in range(self.action_space.n)])
 
+def SARSA(env, totalEpisodes, epsilon, stepSize):
+    for i in range(totalEpisodes):
+        state, action = env.reset()
+        episodes = []
+
+        while(True):
+            observation = ValueFunction.act(state)
+
+    pass
+
+def main():
+    env = gym.make("MountainCar-v0")
