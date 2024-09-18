@@ -1,6 +1,9 @@
+import numpy as np
 from gym import spaces
 import torch.nn as nn
-
+import gym
+import torch
+from torchsummary import summary
 
 class DQN(nn.Module):
     """
@@ -26,8 +29,37 @@ class DQN(nn.Module):
         ), "action_space must be of type Discrete"
 
         # TODO Implement DQN Network
-        raise NotImplementedError
+        self.DQN = nn.Sequential(
+            self.conv_block(4, 32, kernel_size=8, stride=4, padding=0),
+            self.conv_block(32, 64, kernel_size=4, stride=2, padding=0),
+            self.conv_block(64, 64, kernel_size=3, stride=1, padding=0),
+            nn.Linear(64, 512),
+            nn.ReLU(),
+            nn.Linear(512, 6),
+
+        )
+
+
+
 
     def forward(self, x):
         # TODO Implement forward pass
-        raise NotImplementedError
+        x= nn.Flatten(x)
+        logits = self.DQN(x)
+        return logits
+
+    def conv_block(self, in_channels, out_channels, **kwargs):
+        return nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, **kwargs),
+            nn.ReLU()
+        )
+
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# env = gym.make("Pong-v0")
+
+# model=DQN(env.observation_space,env.action_space)
+# model= model.to(device)
+#
+# summary(model, (np.ones([4,84,84]),6))
