@@ -23,14 +23,12 @@ class NoopResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[0] == "NOOP"
 
     def reset(self, **kwargs):
-        """ Do no-op action for a number of steps in [1, noop_max]."""
+        """Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
-            noops = self.unwrapped.np_random.integers(
-                1, self.noop_max + 1
-            )  # pylint: disable=E1101
+            noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)  # pylint: disable=E1101
         assert noops > 0
         obs = None
         for _ in range(noops):

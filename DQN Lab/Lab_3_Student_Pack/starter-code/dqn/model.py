@@ -3,7 +3,7 @@ from gym import spaces
 import torch.nn as nn
 import gym
 import torch
-#from torchsummary import summary
+from torchsummary import summary
 
 class DQN(nn.Module):
     """
@@ -33,7 +33,7 @@ class DQN(nn.Module):
             self.conv_block(4, 32, kernel_size=8, stride=4, padding=0),
             self.conv_block(32, 64, kernel_size=4, stride=2, padding=0),
             self.conv_block(64, 64, kernel_size=3, stride=1, padding=0),
-            nn.Linear(64, 512),
+            nn.Linear(7, 512),
             nn.ReLU(),
             nn.Linear(512, 6),
 
@@ -44,7 +44,7 @@ class DQN(nn.Module):
 
     def forward(self, x):
         # TODO Implement forward pass
-        x= nn.Flatten(x)
+
         logits = self.DQN(x)
         return logits
 
@@ -57,9 +57,9 @@ class DQN(nn.Module):
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# env = gym.make("Pong-v0")
+env = gym.make("PongNoFrameskip-v4")
 
-# model=DQN(env.observation_space,env.action_space)
-# model= model.to(device)
-#
-# summary(model, (np.ones([4,84,84]),6))
+model=DQN(env.observation_space,env.action_space)
+model= model.to(device)
+
+summary(model, (4,86,86))
