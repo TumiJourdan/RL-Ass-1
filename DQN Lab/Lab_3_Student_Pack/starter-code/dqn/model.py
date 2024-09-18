@@ -3,7 +3,7 @@ from gym import spaces
 import torch.nn as nn
 import gym
 import torch
-from torchsummary import summary
+#from torchsummary import summary
 
 class DQN(nn.Module):
     """
