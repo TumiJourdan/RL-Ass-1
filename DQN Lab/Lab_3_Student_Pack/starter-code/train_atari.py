@@ -46,11 +46,18 @@ if __name__ == "__main__":
 
     # TODO Create dqn agent
     # agent = DQNAgent( ... )
-
+    agent = DQNAgent(env.observation_space,
+                     env.action_space,replay_buffer,
+                     hyper_params["use-double-dqn"],
+                     hyper_params["learning-rate"],
+                     hyper_params["batch-size"],
+                     hyper_params["discount-factor"],
+                     hyper_params["target-update-freq"])
+    
     eps_timesteps = hyper_params["eps-fraction"] * float(hyper_params["num-steps"])
     episode_rewards = [0.0]
 
-    state = env.reset()
+    state,_ = env.reset()
     for t in range(hyper_params["num-steps"]):
         fraction = min(1.0, float(t) / eps_timesteps)
         eps_threshold = hyper_params["eps-start"] + fraction * (
@@ -62,10 +69,19 @@ if __name__ == "__main__":
         # take step in env
         # add state, action, reward, next_state, float(done) to reply memory - cast done to float
         # add reward to episode_reward
-
+        
+        if(sample <= eps_threshold):
+            action = env.action_space.sample()
+        else:
+            action = np.argmax(agent.dqn_model.forward(state))
+            
+        next_state, reward, done, _, _ = env.step(action)
+            
         episode_rewards[-1] += reward
+        replay_buffer.add(state,action,reward,next_state,done)
+        
         if done:
-            state = env.reset()
+            state,_ = env.reset()
             episode_rewards.append(0.0)
 
         if (
