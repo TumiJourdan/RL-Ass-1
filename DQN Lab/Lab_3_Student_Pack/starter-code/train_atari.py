@@ -57,7 +57,7 @@ if __name__ == "__main__":
     eps_timesteps = hyper_params["eps-fraction"] * float(hyper_params["num-steps"])
     episode_rewards = [0.0]
 
-    state,_ = env.reset()
+    state = env.reset()
     for t in range(hyper_params["num-steps"]):
         fraction = min(1.0, float(t) / eps_timesteps)
         eps_threshold = hyper_params["eps-start"] + fraction * (
@@ -75,13 +75,13 @@ if __name__ == "__main__":
         else:
             action = np.argmax(agent.dqn_model.forward(state))
             
-        next_state, reward, done, _, _ = env.step(action)
+        next_state, reward, done, _ = env.step(action)
             
         episode_rewards[-1] += reward
         replay_buffer.add(state,action,reward,next_state,done)
         
         if done:
-            state,_ = env.reset()
+            state = env.reset()
             episode_rewards.append(0.0)
 
         if (

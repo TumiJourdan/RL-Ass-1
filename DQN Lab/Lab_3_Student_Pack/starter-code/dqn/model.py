@@ -39,11 +39,9 @@ class DQN(nn.Module):
 
         )
         
-
-
     def forward(self, x):
         # TODO Implement forward pass
-
+        x = torch.tensor(x,dtype=torch.float32)
         logits = self.DQN(x)
         return logits
 
