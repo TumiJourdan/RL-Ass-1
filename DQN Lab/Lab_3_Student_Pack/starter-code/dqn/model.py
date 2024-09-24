@@ -11,7 +11,7 @@ class DQN(nn.Module):
     Nature DQN paper.
     """
 
-    def __init__(self, observation_space: spaces.Box, action_space: spaces.Discrete):
+    def __init__(self, observation_space: spaces.Box, action_space: spaces.Discrete,learning_rate=0.0001):
         """
         Initialise the DQN
         :param observation_space: the state space of the environment
@@ -38,8 +38,7 @@ class DQN(nn.Module):
             nn.Linear(512, 6),
 
         )
-
-
+        
 
 
     def forward(self, x):
@@ -56,10 +55,10 @@ class DQN(nn.Module):
 
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-env = gym.make("PongNoFrameskip-v4")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# env = gym.make("PongNoFrameskip-v4")
 
-model=DQN(env.observation_space,env.action_space)
-model= model.to(device)
+# model=DQN(env.observation_space,env.action_space)
+# model= model.to(device)
 
-summary(model, (4,86,86))
+# summary(model, (4,86,86))
