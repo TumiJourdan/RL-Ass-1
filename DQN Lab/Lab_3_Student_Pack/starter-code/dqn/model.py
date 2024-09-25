@@ -41,7 +41,10 @@ class DQN(nn.Module):
         
     def forward(self, x):
         # TODO Implement forward pass
+        print("Before tesnor",x._frames[0].shape)
         x = torch.tensor(x,dtype=torch.float32)
+        
+        print("After tesnor",x.shape)
         logits = self.DQN(x)
         return logits
 

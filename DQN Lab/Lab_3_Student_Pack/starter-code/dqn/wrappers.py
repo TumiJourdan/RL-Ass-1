@@ -32,7 +32,7 @@ class NoopResetEnv(gym.Wrapper):
         assert noops > 0
         obs = None
         for _ in range(noops):
-            obs, _, done, _, _ = self.env.step(self.noop_action)
+            obs, _, done, _ = self.env.step(self.noop_action)
             if done:
                 obs = self.env.reset(**kwargs)
         return obs
@@ -115,7 +115,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         total_reward = 0.0
         done = None
         for i in range(self._skip):
-            obs, reward, done, _, info = self.env.step(action)
+            obs, reward, done, info = self.env.step(action)
             if i == self._skip - 2:
                 self._obs_buffer[0] = obs
             if i == self._skip - 1:
@@ -158,7 +158,7 @@ class WarpFrame(gym.ObservationWrapper):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(
             frame, (self.width, self.height), interpolation=cv2.INTER_AREA
-        )
+        )        
         return frame[:, :, None]
 
 
@@ -172,6 +172,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
+        print("frame stack init : obs shape ",shp)
         self.observation_space = spaces.Box(
             low=0, high=255, shape=(shp[0] * k, shp[1], shp[2]), dtype=np.uint8
         )

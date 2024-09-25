@@ -40,8 +40,11 @@ if __name__ == "__main__":
     # TODO Pick Gym wrappers to use
     #
     #
-    #
-
+    env = WarpFrame(env)
+    env = PyTorchFrame(env)
+    frames_to_stack = 4
+    env = FrameStack(env,frames_to_stack)
+    
     replay_buffer = ReplayBuffer(hyper_params["replay-buffer-size"])
 
     # TODO Create dqn agent
