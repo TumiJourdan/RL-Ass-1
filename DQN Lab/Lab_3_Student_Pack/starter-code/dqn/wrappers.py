@@ -159,7 +159,7 @@ class WarpFrame(gym.ObservationWrapper):
         frame = cv2.resize(
             frame, (self.width, self.height), interpolation=cv2.INTER_AREA
         )        
-        return frame[:, :, None]
+        return frame[:, :, None] # HWC
 
 
 class FrameStack(gym.Wrapper):

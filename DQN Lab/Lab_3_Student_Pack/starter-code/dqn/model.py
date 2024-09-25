@@ -41,10 +41,11 @@ class DQN(nn.Module):
         
     def forward(self, x):
         # TODO Implement forward pass
-        print("Before tesnor",x._frames[0].shape)
-        x = torch.tensor(x,dtype=torch.float32)
+        # print("Before tesnor",x._frames[0].shape) # 1 84 84
         
-        print("After tesnor",x.shape)
+        x = torch.tensor(x,dtype=torch.float32)
+        # x = x.permute(1,0,2,3)
+        # print("After tesnor",x.shape)
         logits = self.DQN(x)
         return logits
 
@@ -56,10 +57,10 @@ class DQN(nn.Module):
 
 
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# env = gym.make("PongNoFrameskip-v4")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+env = gym.make("PongNoFrameskip-v4")
 
-# model=DQN(env.observation_space,env.action_space)
-# model= model.to(device)
+model=DQN(env.observation_space,env.action_space)
+model= model.to(device)
 
-# summary(model, (4,86,86))
+summary(model, (4,86,86))

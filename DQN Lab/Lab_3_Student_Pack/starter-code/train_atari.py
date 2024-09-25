@@ -40,10 +40,10 @@ if __name__ == "__main__":
     # TODO Pick Gym wrappers to use
     #
     #
-    env = WarpFrame(env)
-    env = PyTorchFrame(env)
+    env = WarpFrame(env) # HWC
+    env = PyTorchFrame(env) # CHW
     frames_to_stack = 4
-    env = FrameStack(env,frames_to_stack)
+    env = FrameStack(env,frames_to_stack) # BCHW, channel = 1 Doh!
     
     replay_buffer = ReplayBuffer(hyper_params["replay-buffer-size"])
 
@@ -76,7 +76,9 @@ if __name__ == "__main__":
         if(sample <= eps_threshold):
             action = env.action_space.sample()
         else:
-            action = np.argmax(agent.dqn_model.forward(state))
+            
+            action = np.argmax(agent.dqn_model.forward(state).detach().numpy())
+            print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
             
