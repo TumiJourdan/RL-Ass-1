@@ -1,7 +1,7 @@
 import random
 import numpy as np
 import gym
-
+import torch
 from dqn.agent import DQNAgent
 from dqn.replay_buffer import ReplayBuffer
 from dqn.wrappers import *
@@ -76,8 +76,8 @@ if __name__ == "__main__":
         if(sample <= eps_threshold):
             action = env.action_space.sample()
         else:
-            
-            action = np.argmax(agent.dqn_model.forward(state).detach().numpy())
+            print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
+            action = torch.argmax(agent.dqn_model.forward(state),dim=3)
             print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
