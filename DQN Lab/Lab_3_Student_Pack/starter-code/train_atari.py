@@ -72,13 +72,14 @@ if __name__ == "__main__":
         # take step in env
         # add state, action, reward, next_state, float(done) to reply memory - cast done to float
         # add reward to episode_reward
-        
+        print(eps_threshold)
         if(sample <= eps_threshold):
             action = env.action_space.sample()
+            # print("exploring ",action ) 
         else:
-            print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
-            action = torch.argmax(agent.dqn_model.forward(state),dim=3)
-            print("Action :",action)
+            # print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
+            action = torch.argmax(agent.dqn_model.forward(state),dim=1)
+            # print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
             
