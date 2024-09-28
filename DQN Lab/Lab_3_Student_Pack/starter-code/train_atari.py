@@ -43,7 +43,7 @@ if __name__ == "__main__":
     env = WarpFrame(env) # HWC
     env = PyTorchFrame(env) # CHW
     frames_to_stack = 4
-    env = FrameStack(env,frames_to_stack) # BCHW, channel = 1 Doh!
+    env = FrameStack(env,frames_to_stack) # CCHW, channel = 1 Doh! # 4,1,84,84
     
     replay_buffer = ReplayBuffer(hyper_params["replay-buffer-size"])
 
@@ -62,6 +62,7 @@ if __name__ == "__main__":
 
     state = env.reset()
     for t in range(hyper_params["num-steps"]):
+        # looks like a linear decay
         fraction = min(1.0, float(t) / eps_timesteps)
         eps_threshold = hyper_params["eps-start"] + fraction * (
             hyper_params["eps-end"] - hyper_params["eps-start"]
@@ -72,7 +73,6 @@ if __name__ == "__main__":
         # take step in env
         # add state, action, reward, next_state, float(done) to reply memory - cast done to float
         # add reward to episode_reward
-        print(eps_threshold)
         if(sample <= eps_threshold):
             action = env.action_space.sample()
             # print("exploring ",action ) 
@@ -82,9 +82,11 @@ if __name__ == "__main__":
             # print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
-            
+        
+        
         episode_rewards[-1] += reward
         replay_buffer.add(state,action,reward,next_state,done)
+        state = next_state
         
         if done:
             state = env.reset()

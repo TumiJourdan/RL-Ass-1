@@ -61,19 +61,25 @@ class DQNAgent:
         # get the TD error over the minibatch and average it out
         self.optimizer.zero_grad()
         loss_func = nn.MSELoss()
-        loss = 0
+        loss = torch.tensor([])
         for x in range(self.batch_size):
+            if (len(samples[NEXT_STATE][x].shape) == 3):
+                pass
             target_output = self.target_network.forward(samples[NEXT_STATE][x])
-            max_action = np.max(target_output)
+            max_action = torch.max(target_output)
             max_action *= 1-samples[DONE][x]
             r = samples[REWARD][x]
-            policy_network_out = self.dqn_model.forward(samples[STATE][x])[samples[ACTION][x]]
-            
-            loss+= loss_func(r+self.gamma*max_action-policy_network_out)
+            policy_network_out = self.dqn_model.forward(samples[STATE][x])[0][samples[ACTION][x]]
+            if (len(samples[STATE][x].shape) == 3):
+                pass
+            # turn loss into a tensor
+            loss = torch.cat(loss,loss_func(r+self.gamma*max_action,policy_network_out))
             
             # pass the state action into the environment to get the reward
             # calculate the difference of rewards
-        loss_returned = loss/self.batch_size
+        # batch size = 256 or 1 ? 
+        loss_returned = loss
+        torch.autograd.set_detect_anomaly(True)
         loss_returned.backward()
         self.optimizer.step()
     

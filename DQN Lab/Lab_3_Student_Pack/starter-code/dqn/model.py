@@ -52,7 +52,13 @@ class DQN(nn.Module):
     def forward(self, x):
         # Convert input to tensor and ensure proper type and shape
         x = torch.tensor(x, dtype=torch.float32)
-        x = x.permute(1,0,2,3)
+        shape_size = len(x.shape)
+
+        if (len(x.shape) == 4):
+            x = x.permute(1,0,2,3)
+        else:
+            x = x.unsqueeze(0)
+        
         # Apply convolutional layers
         x = self.conv1(x)
         x = self.conv2(x)
