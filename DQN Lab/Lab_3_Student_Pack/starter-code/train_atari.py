@@ -74,15 +74,15 @@ if __name__ == "__main__":
         # add state, action, reward, next_state, float(done) to reply memory - cast done to float
         # add reward to episode_reward
         if(sample <= eps_threshold):
-            action = env.action_space.sample()
+            action = torch.tensor(env.action_space.sample())
             # print("exploring ",action ) 
         else:
             # print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
             action = torch.argmax(agent.dqn_model.forward(state),dim=1)
+            action = action[0]
             # print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
-        
         
         episode_rewards[-1] += reward
         replay_buffer.add(state,action,reward,next_state,done)

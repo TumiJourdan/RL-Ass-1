@@ -54,10 +54,10 @@ class DQN(nn.Module):
         x = torch.tensor(x, dtype=torch.float32)
         shape_size = len(x.shape)
 
-        if (len(x.shape) == 4):
+        if (x.shape[1] == 1):
             x = x.permute(1,0,2,3)
-        else:
-            x = x.unsqueeze(0)
+        # else:
+        #     x = x.unsqueeze(0)
         
         # Apply convolutional layers
         x = self.conv1(x)
