@@ -63,13 +63,13 @@ class DQNAgent:
         loss_func = nn.MSELoss()
         
         target_output = self.target_network.forward(samples[NEXT_STATE])
-        max_action = torch.max(target_output).type(torch.float)
+        max_action = torch.max(target_output)
         # max_action *= 1-samples[DONE] 
         r = torch.tensor(samples[REWARD]) 
-        policy_network_out = self.dqn_model.forward(samples[STATE])[:,samples[ACTION]].type(torch.float)
+        policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
     
-        loss = loss_func(policy_network_out,r+self.gamma*max_action)
-        loss_returned = loss.type(torch.float)
+        loss = loss_func(policy_network_out,(r+self.gamma*max_action).type(torch.float32))
+        loss_returned = loss
         torch.autograd.set_detect_anomaly(True)
         loss_returned.backward()
         self.optimizer.step()

@@ -51,6 +51,7 @@ class DQN(nn.Module):
 
     def forward(self, x):
         # Convert input to tensor and ensure proper type and shape
+        x = np.array(x)
         x = torch.tensor(x, dtype=torch.float32)
         shape_size = len(x.shape)
 
