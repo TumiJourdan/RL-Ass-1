@@ -5,6 +5,8 @@ import torch
 from dqn.agent import DQNAgent
 from dqn.replay_buffer import ReplayBuffer
 from dqn.wrappers import *
+from tqdm import tqdm
+
 
 if __name__ == "__main__":
 
@@ -61,7 +63,7 @@ if __name__ == "__main__":
     episode_rewards = [0.0]
 
     state = env.reset()
-    for t in range(hyper_params["num-steps"]):
+    for t in tqdm(range(hyper_params["num-steps"])):
         # looks like a linear decay
         fraction = min(1.0, float(t) / eps_timesteps)
         eps_threshold = hyper_params["eps-start"] + fraction * (
@@ -74,7 +76,7 @@ if __name__ == "__main__":
         # add state, action, reward, next_state, float(done) to reply memory - cast done to float
         # add reward to episode_reward
         if(sample <= eps_threshold):
-            action = torch.tensor(env.action_space.sample())
+            action = env.action_space.sample()
             # print("exploring ",action ) 
         else:
             # print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
@@ -102,6 +104,7 @@ if __name__ == "__main__":
             t > hyper_params["learning-starts"]
             and t % hyper_params["target-update-freq"] == 0
         ):
+            print("Updating target network")
             agent.update_target_network()
 
         num_episodes = len(episode_rewards)

@@ -35,39 +35,26 @@ class DQN(nn.Module):
         
         # Compute the size of the flattened features after the convolutional layers
         # Assuming input size is (4, 84, 84)
-        self.flatten_size = self._get_conv_output(observation_space.shape)
 
         # Fully connected layers
-        self.fc1 = nn.Linear(self.flatten_size, 512)
+        self.fc1 = nn.Linear(3136, 512)
         self.fc2 = nn.Linear(512, action_space.n)
 
-    def _get_conv_output(self, shape):
-        """Helper function to compute size of the output after the convolutional layers"""
-        o = torch.zeros(1, *shape)
-        o = self.conv1(o)
-        o = self.conv2(o)
-        o = self.conv3(o)
-        return int(np.prod(o.size()))
 
     def forward(self, x):
         # Convert input to tensor and ensure proper type and shape
         x = np.array(x)
         x = torch.tensor(x, dtype=torch.float32)
-        shape_size = len(x.shape)
-
-        if (x.shape[1] == 1):
-            x = x.permute(1,0,2,3)
-        # else:
-        #     x = x.unsqueeze(0)
-        
+        if ( len(x.shape)==3):
+            x= x.unsqueeze(0) 
         # Apply convolutional layers
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
 
         # Flatten the tensor for fully connected layers
-        x = x.view(x.size(0), -1)
-        
+        # x = x.view(x.size(0), -1)
+        x = torch.flatten(x,start_dim=1)
         # Apply fully connected layers
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
