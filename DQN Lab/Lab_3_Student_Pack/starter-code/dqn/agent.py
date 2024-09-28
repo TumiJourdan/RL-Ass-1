@@ -37,6 +37,8 @@ class DQNAgent:
         """
         # TODO: Initialise agent's networks, optimiser and replay buffer
         self.dqn_model = DQN(observation_space,action_space,lr)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.dqn_model = self.dqn_model.to(device)
         self.replay_buffer = replay_buffer
         self.gamma = gamma
         self.batch_size = batch_size
@@ -44,6 +46,8 @@ class DQNAgent:
         self.target_network = copy.deepcopy(self.dqn_model)
         self.update_target = update_target
         self.optimizer = torch.optim.Adam(self.dqn_model.parameters(),lr = lr)
+
+
 
     def optimise_td_loss(self):
         """

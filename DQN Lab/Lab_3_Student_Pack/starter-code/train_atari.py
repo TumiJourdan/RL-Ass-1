@@ -104,7 +104,6 @@ if __name__ == "__main__":
             t > hyper_params["learning-starts"]
             and t % hyper_params["target-update-freq"] == 0
         ):
-            print("Updating target network")
             agent.update_target_network()
 
         num_episodes = len(episode_rewards)

@@ -27,6 +27,8 @@ class DQN(nn.Module):
         assert (
             type(action_space) == spaces.Discrete
         ), "action_space must be of type Discrete"
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
         # Convolutional layers
         self.conv1 = self.conv_block(4, 32, kernel_size=8, stride=4, padding=0)
@@ -43,8 +45,9 @@ class DQN(nn.Module):
 
     def forward(self, x):
         # Convert input to tensor and ensure proper type and shape
+
         x = np.array(x)
-        x = torch.tensor(x, dtype=torch.float32)
+        x = torch.tensor(x, dtype=torch.float32, device=self.device)
         if ( len(x.shape)==3):
             x= x.unsqueeze(0) 
         # Apply convolutional layers
@@ -59,7 +62,7 @@ class DQN(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
 
-        return x
+        return x.cpu()
 
     def conv_block(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
@@ -69,7 +72,7 @@ class DQN(nn.Module):
 
 
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # env = gym.make("PongNoFrameskip-v4")
 
 # model=DQN(env.observation_space,env.action_space)
