@@ -70,15 +70,15 @@ class DQNAgent:
         max_action = torch.max(target_output)
         # max_action *= 1-samples[DONE] 
         r = torch.tensor(samples[REWARD]) 
+        dones = torch.tensor(samples[DONE])
         policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
     
-        loss = loss_func(policy_network_out,(r+self.gamma*max_action).type(torch.float32))
+        loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32)).to(device)
         loss_returned = loss
-        torch.autograd.set_detect_anomaly(True)
         loss_returned.backward()
         self.optimizer.step()
     
-        return loss_returned
+        return loss_returned.item()
 
     def update_target_network(self):
         """
