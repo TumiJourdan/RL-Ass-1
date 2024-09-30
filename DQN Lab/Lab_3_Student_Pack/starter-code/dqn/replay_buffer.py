@@ -33,6 +33,7 @@ class ReplayBuffer:
             self._storage.append(data)
         else:
             self._storage[self._next_idx] = data
+
         self._next_idx = (self._next_idx + 1) % self._maxsize
 
     def _encode_sample(self, indices):
@@ -60,4 +61,5 @@ class ReplayBuffer:
         :return: a mini-batch of sampled transitions
         """
         indices = np.random.randint(0, len(self._storage) - 1, size=batch_size)
+
         return self._encode_sample(indices)

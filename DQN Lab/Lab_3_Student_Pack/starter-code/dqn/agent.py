@@ -1,18 +1,9 @@
 from gym import spaces
 import numpy as np
-import copy
-import torch.nn as nn
-import torch
+import torch as T
 from dqn.model import DQN
 from dqn.replay_buffer import ReplayBuffer
 
-device = "cuda"
-
-STATE = 0
-ACTION = 1
-REWARD = 2
-NEXT_STATE = 3
-DONE = 4
 
 class DQNAgent:
     def __init__(
@@ -20,11 +11,9 @@ class DQNAgent:
         observation_space: spaces.Box,
         action_space: spaces.Discrete,
         replay_buffer: ReplayBuffer,
-        use_double_dqn,
-        lr,
-        batch_size,
-        gamma,
-        update_target =1,
+        lr: float,
+        batch_size: int,
+        gamma: float,
     ):
         """
         Initialise the DQN algorithm using the Adam optimiser
@@ -35,64 +24,75 @@ class DQNAgent:
         :param batch_size: the batch size
         :param gamma: the discount factor
         """
-        # TODO: Initialise agent's networks, optimiser and replay buffer
-        self.dqn_model = DQN(observation_space,action_space,lr)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.dqn_model = self.dqn_model.to(device)
+        self.policy_network = DQN(observation_space, action_space, lr, "policy")
+        self.target_network = DQN(observation_space, action_space, lr, "target")
+        self.learning_rate = lr
+        self.observation_space = observation_space
+        self.action_space = action_space
         self.replay_buffer = replay_buffer
-        self.gamma = gamma
         self.batch_size = batch_size
-        self.use_double_dqn = use_double_dqn
-        self.target_network = copy.deepcopy(self.dqn_model)
-        self.update_target = update_target
-        self.optimizer = torch.optim.Adam(self.dqn_model.parameters(),lr = lr)
+        self.gamma = gamma
 
+        self.update_target_network()
+        self.target_network.eval()
 
+    def _sample_replays(self):
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+
+        states = T.tensor(states, dtype=T.float).to(self.policy_network.device) / 255.0
+        actions = T.tensor(actions, dtype=T.int).to(self.policy_network.device)
+        next_states = T.tensor(next_states, dtype=T.float).to(self.policy_network.device) / 255.0
+        rewards = T.tensor(rewards, dtype=T.float).to(self.policy_network.device)
+        dones = T.tensor(dones).to(self.policy_network.device)
+
+        return states, actions, next_states, rewards, dones
 
     def optimise_td_loss(self):
         """
         Optimise the TD-error over a single minibatch of transitions
         :return: the loss
         """
-        # TODO
-        #   Optimise the TD-error over a single minibatch of transitions
-        #   Sample the minibatch from the replay-memory
-        #   using done (as a float) instead of if statement
-        #   return loss
 
-        # Sample batch from the replay buffer
-        samples = self.replay_buffer.sample(self.batch_size) # an array of length 5 where each element is the state, action etc, each batchsize length
-        # get the TD error over the minibatch and average it out
-        self.optimizer.zero_grad()
-        loss_func = nn.MSELoss()
-        
-        target_output = self.target_network.forward(samples[NEXT_STATE])
-        max_action = torch.max(target_output)
-        # max_action *= 1-samples[DONE] 
-        r = torch.tensor(samples[REWARD]) 
-        dones = torch.tensor(samples[DONE])
-        policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
-    
-        loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32)).to(device)
-        loss_returned = loss
-        loss_returned.backward()
-        self.optimizer.step()
-    
-        return loss_returned.item()
+        self.policy_network.train()
+
+        states, actions, next_states, rewards, dones = self._sample_replays()
+        predictions = self.policy_network(states)
+
+        with T.no_grad():
+            next_states_predictions = self.target_network(next_states).detach().max(dim=1)[0]
+            indices = T.arange(actions.size(0), dtype=T.int)
+            targets = predictions.detach().clone()
+            targets[indices, actions] = rewards + self.gamma * next_states_predictions * ~dones
+
+        loss = self.policy_network.loss(predictions, targets).to(self.policy_network.device)
+
+        self.policy_network.optimizer.zero_grad()
+        loss.backward()
+        self.policy_network.optimizer.step()
+
+        return loss.item()
 
     def update_target_network(self):
         """
         Update the target Q-network by copying the weights from the current Q-network
         """
-        # TODO update target_network parameters with policy_network parameters
-        self.target_network = copy.deepcopy(self.dqn_model)
 
-    def act(self, state: np.ndarray):
-        """
-        Select an action greedily from the Q-network given the state
-        :param state: the current state
-        :return: the action to take
-        """
-        # TODO Select action greedily from the Q-network given the state
-        policy_network_out = np.argmax(self.dqn_model.forward(state))
-        return policy_network_out
+        self.target_network.load_state_dict(self.policy_network.state_dict())
+
+    def save_models(self):
+        self.policy_network.save_checkpoint()
+        self.target_network.save_checkpoint()
+
+    def load_models(self):
+        self.policy_network.load_checkpoint()
+        self.target_network.load_checkpoint()
+
+    def act(self, state: np.ndarray) -> int:
+        reshaped_state = state.reshape((1, *state.shape)) / 255.0
+        tensor_state = T.tensor(reshaped_state, dtype=T.float).to(self.policy_network.device)
+
+        with T.no_grad():
+            output = self.policy_network(tensor_state)
+
+        action = T.argmax(output).item()
+        return action
