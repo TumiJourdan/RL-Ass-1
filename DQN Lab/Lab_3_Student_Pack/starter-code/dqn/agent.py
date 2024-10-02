@@ -24,7 +24,6 @@ class DQNAgent:
         lr,
         batch_size,
         gamma,
-        update_target =1,
     ):
         """
         Initialise the DQN algorithm using the Adam optimiser
@@ -36,16 +35,17 @@ class DQNAgent:
         :param gamma: the discount factor
         """
         # TODO: Initialise agent's networks, optimiser and replay buffer
-        self.dqn_model = DQN(observation_space,action_space,lr)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.dqn_model = self.dqn_model.to(device)
+        self.policy_network = DQN(observation_space, action_space, lr, "policy")
+        self.target_network = DQN(observation_space, action_space, lr, "target")
+        self.learning_rate = lr
+        self.observation_space = observation_space
+        self.action_space = action_space
         self.replay_buffer = replay_buffer
-        self.gamma = gamma
         self.batch_size = batch_size
-        self.use_double_dqn = use_double_dqn
-        self.target_network = copy.deepcopy(self.dqn_model)
-        self.update_target = update_target
-        self.optimizer = torch.optim.Adam(self.dqn_model.parameters(),lr = lr)
+        self.gamma = gamma
+
+        self.update_target_network()
+        self.target_network.eval()
 
 
 
@@ -63,22 +63,30 @@ class DQNAgent:
         # Sample batch from the replay buffer
         samples = self.replay_buffer.sample(self.batch_size) # an array of length 5 where each element is the state, action etc, each batchsize length
         # get the TD error over the minibatch and average it out
-        
-        loss_func = nn.MSELoss()
-        
-        target_output = self.target_network.forward(samples[NEXT_STATE])
-        max_action = torch.max(target_output)
-        # max_action *= 1-samples[DONE] 
-        r = torch.tensor(samples[REWARD],device= device)
-        dones = torch.tensor(samples[DONE],device=device)
-        policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
 
-        loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32))
+
+        states = torch.tensor(samples[STATE], dtype=torch.float).to(self.policy_network.device)/255.0
+        actions = torch.tensor(samples[ACTION], dtype=torch.int).to(self.policy_network.device)
+        next_states = torch.tensor(samples[NEXT_STATE], dtype=torch.float).to(self.policy_network.device)/255.0
+        rewards = torch.tensor(samples[REWARD], dtype=torch.float).to(self.policy_network.device)
+        dones = torch.tensor(samples[DONE]).to(self.policy_network.device)
+
+        self.policy_network.train()
         
-        self.optimizer.zero_grad()
+        predictions = self.policy_network(states)
+
+        with torch.no_grad():
+            next_states_predictions = self.target_network(next_states).detach().max(dim=1)[0]
+            indices = torch.arange(actions.size(0), dtype=torch.int)
+            targets = predictions.detach().clone()
+            targets[indices, actions] = rewards + self.gamma * next_states_predictions * ~dones
+
+        loss = self.policy_network.loss(predictions, targets).to(self.policy_network.device)
+
+        self.policy_network.optimizer.zero_grad()
         loss.backward()
-        self.optimizer.step()
-    
+        self.policy_network.optimizer.step()
+
         return loss.item()
 
     def update_target_network(self):
@@ -86,14 +94,22 @@ class DQNAgent:
         Update the target Q-network by copying the weights from the current Q-network
         """
         # TODO update target_network parameters with policy_network parameters
-        self.target_network = copy.deepcopy(self.dqn_model)
+        self.target_network.load_state_dict(self.policy_network.state_dict())
 
-    def act(self, state: np.ndarray):
-        """
-        Select an action greedily from the Q-network given the state
-        :param state: the current state
-        :return: the action to take
-        """
-        # TODO Select action greedily from the Q-network given the state
-        policy_network_out = np.argmax(self.dqn_model.forward(state))
-        return policy_network_out
+    def save_models(self):
+        self.policy_network.save_checkpoint()
+        self.target_network.save_checkpoint()
+
+    def load_models(self):
+        self.policy_network.load_checkpoint()
+        self.target_network.load_checkpoint()
+
+    def act(self, state: np.ndarray) -> int:
+        reshaped_state = np.reshape(state,(1, *state.shape)) / 255.0
+        tensor_state = torch.tensor(reshaped_state, dtype=torch.float).to(self.policy_network.device)
+
+        with torch.no_grad():
+            output = self.policy_network(tensor_state)
+
+        action = torch.argmax(output).item()
+        return action
