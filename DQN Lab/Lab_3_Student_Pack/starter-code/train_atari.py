@@ -44,6 +44,7 @@ if __name__ == "__main__":
     #
     env = WarpFrame(env) # HWC
     env = PyTorchFrame(env) # CHW
+    env = ClipRewardEnv(env)
     frames_to_stack = 4
     env = FrameStack(env,frames_to_stack) # CCHW, channel = 1 Doh! # 4,1,84,84
     
@@ -80,7 +81,7 @@ if __name__ == "__main__":
             # print("exploring ",action ) 
         else:
             # print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
-            action = torch.argmax(agent.dqn_model.forward(state),dim=1)
+            action = torch.argmax(agent.dqn_model.forward(state),dim=1).cpu()
             action = action[0]
             # print("Action :",action)
             

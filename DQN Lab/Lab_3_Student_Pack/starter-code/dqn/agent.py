@@ -63,22 +63,23 @@ class DQNAgent:
         # Sample batch from the replay buffer
         samples = self.replay_buffer.sample(self.batch_size) # an array of length 5 where each element is the state, action etc, each batchsize length
         # get the TD error over the minibatch and average it out
-        self.optimizer.zero_grad()
+        
         loss_func = nn.MSELoss()
         
         target_output = self.target_network.forward(samples[NEXT_STATE])
         max_action = torch.max(target_output)
         # max_action *= 1-samples[DONE] 
-        r = torch.tensor(samples[REWARD]) 
-        dones = torch.tensor(samples[DONE])
+        r = torch.tensor(samples[REWARD]).to(device)
+        dones = torch.tensor(samples[DONE]).to(device)
         policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
-    
-        loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32)).to(device)
-        loss_returned = loss
-        loss_returned.backward()
+
+        loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32))
+        
+        self.optimizer.zero_grad()
+        loss.backward()
         self.optimizer.step()
     
-        return loss_returned.item()
+        return loss.item()
 
     def update_target_network(self):
         """

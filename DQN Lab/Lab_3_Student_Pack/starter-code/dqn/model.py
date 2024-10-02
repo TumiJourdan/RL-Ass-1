@@ -62,7 +62,7 @@ class DQN(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
 
-        return x.cpu()
+        return x
 
     def conv_block(self, in_channels, out_channels, **kwargs):
         return nn.Sequential(
