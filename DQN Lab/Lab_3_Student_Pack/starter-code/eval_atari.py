@@ -82,6 +82,8 @@ if __name__ == "__main__":
         ):
             loss = agent.optimise_td_loss()
 
+            
+
         if (
             t > hyper_params["learning-starts"]
             and t % hyper_params["target-update-freq"] == 0
