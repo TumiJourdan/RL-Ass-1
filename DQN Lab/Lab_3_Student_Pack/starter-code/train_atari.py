@@ -77,7 +77,7 @@ if __name__ == "__main__":
         if(sample <= eps_threshold):
             action = env.action_space.sample()
         else:
-            agent.act(state)
+            action = agent.act(state)
             
         next_state, reward, done, _ = env.step(action)
         
