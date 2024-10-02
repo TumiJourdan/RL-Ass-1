@@ -6,6 +6,7 @@ from dqn.agent import DQNAgent
 from dqn.replay_buffer import ReplayBuffer
 from dqn.wrappers import *
 from tqdm import tqdm
+import wandb
 
 
 if __name__ == "__main__":
@@ -27,6 +28,7 @@ if __name__ == "__main__":
     "eps-fraction": 0.1,  # fraction of num-steps
     "print-freq": 10,
 }
+    wandb.init(project="DQNET", name="Attempt 1")
 
     np.random.seed(hyper_params["seed"])
     random.seed(hyper_params["seed"])
@@ -94,6 +96,7 @@ if __name__ == "__main__":
             and t % hyper_params["learning-freq"] == 0
         ):
             loss = agent.optimise_td_loss()
+            wandb.log({"loss": loss, "step": t})
 
         if (
             t > hyper_params["learning-starts"]
@@ -116,3 +119,6 @@ if __name__ == "__main__":
             print("mean 100 episode reward: {}".format(mean_100ep_reward))
             print("% time spent exploring: {}".format(int(100 * eps_threshold)))
             print("********************************************************")
+            wandb.log({
+                "reward_100_eps": mean_100ep_reward,
+            }, step=t)

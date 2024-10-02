@@ -1,0 +1,39 @@
+{
+  "os": "Windows-10-10.0.22631-SP0",
+  "python": "3.10.0",
+  "startedAt": "2024-10-02T19:58:03.572285Z",
+  "program": "c:\\Tumi\\Other Subjects\\RL\\RL-Ass-1\\DQN Lab\\Lab_3_Student_Pack\\starter-code\\train_atari.py",
+  "codePath": "starter-code\\train_atari.py",
+  "email": "2180153@students.wits.ac.za",
+  "root": "C:\\Tumi\\Other Subjects\\RL\\RL-Ass-1\\DQN Lab\\Lab_3_Student_Pack",
+  "host": "LPTWilliam",
+  "username": "willi",
+  "executable": "C:\\Tumi\\Other Subjects\\RL\\RL-Ass-1\\DQN Lab\\Lab_3_Student_Pack\\.venv\\Scripts\\python.exe",
+  "codePathLocal": "starter-code\\train_atari.py",
+  "cpu_count": 10,
+  "cpu_count_logical": 16,
+  "gpu": "[NVIDIA GeForce RTX 3060 Laptop GPU]",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "997693845504",
+      "used": "777973612544"
+    }
+  },
+  "memory": {
+    "total": "34071502848"
+  },
+  "cpu": {
+    "count": 10,
+    "countLogical": 16
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3060 Laptop GPU",
+      "memoryTotal": "6442450944",
+      "cudaCores": 3840,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.6"
+}
