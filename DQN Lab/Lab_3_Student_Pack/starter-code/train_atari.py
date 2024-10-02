@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "batch-size": 256,  # number of transitions to optimize at the same time
         "learning-starts": 10000,  # number of steps before learning starts
         "learning-freq": 5,  # number of iterations between every optimization step
-        "use-double-dqn": True,  # use double deep Q-learning
+        "use-double-dqn": False,  # use double deep Q-learning
         "target-update-freq": 1000,  # number of iterations between every target network update
         "eps-start": 1.0,  # e-greedy start threshold
         "eps-end": 0.01,  # e-greedy end threshold
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     random.seed(hyper_params["seed"])
 
     assert "NoFrameskip" in hyper_params["env"], "Require environment with no frameskip"
-    env = gym.make(hyper_params["env"])
+    env = gym.make(hyper_params["env"],render_mode = "human")
     env.seed(hyper_params["seed"])
 
     env = NoopResetEnv(env, noop_max=30)
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     env = PyTorchFrame(env) # CHW
     env = ClipRewardEnv(env)
     frames_to_stack = 4
+    env = ClipRewardEnv(env)
     env = FrameStack(env,frames_to_stack) # CCHW, channel = 1 Doh! # 4,1,84,84
     
     replay_buffer = ReplayBuffer(hyper_params["replay-buffer-size"])
@@ -78,12 +79,9 @@ if __name__ == "__main__":
         # add reward to episode_reward
         if(sample <= eps_threshold):
             action = env.action_space.sample()
-            # print("exploring ",action ) 
         else:
-            # print("output ",agent.dqn_model.forward(state).detach().numpy().shape)
             action = torch.argmax(agent.dqn_model.forward(state),dim=1).cpu()
             action = action[0]
-            # print("Action :",action)
             
         next_state, reward, done, _ = env.step(action)
         

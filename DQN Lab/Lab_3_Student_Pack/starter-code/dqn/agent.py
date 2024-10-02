@@ -69,8 +69,8 @@ class DQNAgent:
         target_output = self.target_network.forward(samples[NEXT_STATE])
         max_action = torch.max(target_output)
         # max_action *= 1-samples[DONE] 
-        r = torch.tensor(samples[REWARD]).to(device)
-        dones = torch.tensor(samples[DONE]).to(device)
+        r = torch.tensor(samples[REWARD],device= device)
+        dones = torch.tensor(samples[DONE],device=device)
         policy_network_out = self.dqn_model.forward(samples[STATE])[torch.arange(self.batch_size),samples[ACTION]]
 
         loss = loss_func(policy_network_out,(r+self.gamma*max_action*~dones).type(torch.float32))
