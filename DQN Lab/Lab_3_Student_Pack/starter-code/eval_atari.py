@@ -75,33 +75,3 @@ if __name__ == "__main__":
         if done:
             state = env.reset()
             episode_rewards.append(0.0)
-
-        if (
-            t > hyper_params["learning-starts"]
-            and t % hyper_params["learning-freq"] == 0
-        ):
-            loss = agent.optimise_td_loss()
-
-            
-
-        if (
-            t > hyper_params["learning-starts"]
-            and t % hyper_params["target-update-freq"] == 0
-        ):
-            agent.save_models()
-            agent.update_target_network()
-
-        num_episodes = len(episode_rewards)
-
-        if (
-            done
-            and hyper_params["print-freq"] is not None
-            and len(episode_rewards) % hyper_params["print-freq"] == 0
-        ):
-            mean_100ep_reward = round(np.mean(episode_rewards[-101:-1]), 1)
-            print("********************************************************")
-            print("steps: {}".format(t))
-            print("episodes: {}".format(num_episodes))
-            print("mean 100 episode reward: {}".format(mean_100ep_reward))
-            print("% time spent exploring: {}".format(int(100 * eps_threshold)))
-            print("********************************************************")
