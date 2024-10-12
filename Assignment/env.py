@@ -69,7 +69,7 @@ class Gym2OpEnv(gym.Env):
         obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
         self._gym_env.observation_space.close()
         self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                         attr_to_keep=obs_attr_to_keep
+                                                        #  attr_to_keep=obs_attr_to_keep
                                                          )
         # export observation space for the Grid2opEnv
         self.observation_space = Box(shape=self._gym_env.observation_space.shape,
@@ -82,7 +82,8 @@ class Gym2OpEnv(gym.Env):
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
         # print("WARNING: setup_actions is not doing anything. Implement your own code in this method.")
 
-        act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
+        act_attr_to_keep = ["set_bus", "set_line_status", 'curtail', 'redispatch']
+        # act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
 
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
                                                            attr_to_keep=act_attr_to_keep)
@@ -93,7 +94,7 @@ class Gym2OpEnv(gym.Env):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
-        return self._gym_env.step(action)
+        return self._gym_env.step(action[0])
 
     def render(self):
         # TODO: Modify for your own required usage
@@ -103,7 +104,7 @@ class Gym2OpEnv(gym.Env):
 def main():
     # Random agent interacting in environment 
 
-    max_steps = 100
+    max_steps = 1000
 
     env = Gym2OpEnv()
 
@@ -121,56 +122,61 @@ def main():
 
 
 
-    model = PPO("MultiInputPolicy",env, verbose=1)
+    model = PPO("MultiInputPolicy",env, verbose=1, n_steps=2048)
 
-    model.learn(total_timesteps=100, progress_bar=True, log_interval=10, reset_num_timesteps=False)
+    
+    # print(f"step = {curr_step} (reset):")
+    # print(f"\t obs = {obs}")
+    # print(f"\t info = {info}\n\n")
 
-    curr_step = 0
-    curr_return = 0
+    model.learn(total_timesteps=2048*1, progress_bar=True, log_interval=10, reset_num_timesteps=False)
 
-    is_done = False
-    obs, info = env.reset()
-    print(f"step = {curr_step} (reset):")
-    print(f"\t obs = {obs}")
-    print(f"\t info = {info}\n\n")
+    episodes = 10
+    avg_return = 0
+    avg_step = 0
 
-    while not is_done and curr_step < max_steps:
-        # action = env.action_space.sample()
-        pred = model.predict(obs)
-        action = {
-            'change_bus':pred[:57], 
-            'change_line_status':pred[57:77],
-            'curtail':pred[77:83],
-            'redispatch':pred[83:89],
-            'set_bus':pred[89:146],
-            'set_line_status':pred[146:]
-            }
-        obs, reward, terminated, truncated, info = env.step(action)
+    for e in range(episodes):
+        curr_step = 0
+        curr_return = 0
 
-        curr_step += 1
-        curr_return += reward
-        is_done = terminated or truncated
+        is_done = False
+        obs, info = env.reset()
 
-        # print(f"step = {curr_step}: ")
-        # print(f"\t obs = {obs}")
-        # print(f"\t reward = {reward}")
-        # print(f"\t terminated = {terminated}")
-        # print(f"\t truncated = {truncated}")
-        # print(f"\t info = {info}")
+        while not is_done and curr_step < max_steps:
+            # action = env.action_space.sample()
+            action = model.predict(obs)
+            obs, reward, terminated, truncated, info = env.step(action)
 
-        # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
-        # Invalid actions are replaced with 'do nothing' action
-        is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
-        # print(f"\t is action valid = {is_action_valid}")
-        # if not is_action_valid:
-        #     print(f"\t\t reason = {info['exception']}")
-        # print("\n")
+            curr_step += 1
+            curr_return += reward
+            is_done = terminated or truncated
+
+            # print(f"step = {curr_step}: ")
+            # print(f"\t obs = {obs}")
+            # print(f"\t reward = {reward}")
+            # print(f"\t terminated = {terminated}")
+            # print(f"\t truncated = {truncated}")
+            # print(f"\t info = {info}")
+
+            # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
+            # Invalid actions are replaced with 'do nothing' action
+            # is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
+            # print(f"\t is action valid = {is_action_valid}")
+            # if not is_action_valid:
+                # print(f"\t\t reason = {info['exception']}")
+            # print("\n")
+
+        avg_return += curr_return
+        avg_step += curr_step
+
+    avg_return /= episodes
+    avg_step /= episodes
 
     print("###########")
     print("# SUMMARY #")
     print("###########")
-    print(f"return = {curr_return}")
-    print(f"total steps = {curr_step}")
+    print(f"return = {avg_return}")
+    print(f"total steps = {avg_step}")
     print("###########")
 
 
