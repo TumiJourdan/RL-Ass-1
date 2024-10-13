@@ -1,0 +1,11 @@
+{
+    "agent_seed": null,
+    "backend_type": "PandaPowerBackend_l2rpn_case14_sandbox",
+    "chronics_max_timestep": "10",
+    "chronics_path": "c:\\Tumi\\Other Subjects\\RL\\RL-Ass-1\\Project\\Shack-Tumi\\.myenv\\Lib\\site-packages\\grid2op\\data\\l2rpn_case14_sandbox\\chronics\\0000",
+    "cumulative_reward": 645.7057495117188,
+    "env_seed": null,
+    "env_type": "Environment_l2rpn_case14_sandbox",
+    "grid_path": "c:\\Tumi\\Other Subjects\\RL\\RL-Ass-1\\Project\\Shack-Tumi\\.myenv\\Lib\\site-packages\\grid2op\\data\\l2rpn_case14_sandbox\\grid.json",
+    "nb_timestep_played": 10
+}
