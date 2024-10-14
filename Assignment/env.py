@@ -123,7 +123,7 @@ def main():
 
 
     model = PPO("MultiInputPolicy",env, verbose=1, n_steps=2048)
-
+    
     
     # print(f"step = {curr_step} (reset):")
     # print(f"\t obs = {obs}")
