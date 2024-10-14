@@ -1,13 +1,17 @@
 import gymnasium as gym
+from gymnasium.spaces import MultiDiscrete, Discrete, Box
 
 import grid2op
 from grid2op import gym_compat
+from grid2op.gym_compat import ContinuousToDiscreteConverter, MultiDiscreteActSpace, BoxGymObsSpace
 from grid2op.Parameters import Parameters
 from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
 from grid2op.Reward import L2RPNReward, N1Reward, CombinedScaledReward
 
 from lightsim2grid import LightSimBackend
+
+from stable_baselines3 import PPO
 
 
 # Gymnasium environment wrapper around Grid2Op environment
@@ -51,29 +55,46 @@ class Gym2OpEnv(gym.Env):
 
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
 
-        self.setup_observations()
+        # self.setup_observations()
         self.setup_actions()
 
         self.observation_space = self._gym_env.observation_space
-        self.action_space = self._gym_env.action_space
+        # self.action_space = self._gym_env.action_space
 
     def setup_observations(self):
         # TODO: Your code to specify & modify the observation space goes here
         # See Grid2Op 'getting started' notebooks for guidance
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        print("WARNING: setup_observations is not doing anything. Implement your own code in this method.")
+        # print("WARNING: setup_observations is not doing anything. Implement your own code in this method.")
+        obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
+        self._gym_env.observation_space.close()
+        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
+                                                        #  attr_to_keep=obs_attr_to_keep
+                                                         )
+        # export observation space for the Grid2opEnv
+        self.observation_space = Box(shape=self._gym_env.observation_space.shape,
+                                     low=self._gym_env.observation_space.low,
+                                     high=self._gym_env.observation_space.high)
 
     def setup_actions(self):
         # TODO: Your code to specify & modify the action space goes here
         # See Grid2Op 'getting started' notebooks for guidance
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        print("WARNING: setup_actions is not doing anything. Implement your own code in this method.")
+        # print("WARNING: setup_actions is not doing anything. Implement your own code in this method.")
+
+        act_attr_to_keep = ["set_bus", "set_line_status", 'curtail', 'redispatch']
+        # act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
+
+        self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
+                                                           attr_to_keep=act_attr_to_keep)
+        
+        self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
 
     def reset(self, seed=None):
         return self._gym_env.reset(seed=seed, options=None)
 
     def step(self, action):
-        return self._gym_env.step(action)
+        return self._gym_env.step(action[0])
 
     def render(self):
         # TODO: Modify for your own required usage
@@ -81,9 +102,9 @@ class Gym2OpEnv(gym.Env):
 
 
 def main():
-    # Random agent interacting in environment #
+    # Random agent interacting in environment 
 
-    max_steps = 100
+    max_steps = 1000
 
     env = Gym2OpEnv()
 
@@ -99,43 +120,63 @@ def main():
     print(env.action_space)
     print("#####################\n\n")
 
-    curr_step = 0
-    curr_return = 0
 
-    is_done = False
-    obs, info = env.reset()
-    print(f"step = {curr_step} (reset):")
-    print(f"\t obs = {obs}")
-    print(f"\t info = {info}\n\n")
 
-    while not is_done and curr_step < max_steps:
-        action = env.action_space.sample()
-        obs, reward, terminated, truncated, info = env.step(action)
+    model = PPO("MultiInputPolicy",env, verbose=1, n_steps=2048)
 
-        curr_step += 1
-        curr_return += reward
-        is_done = terminated or truncated
+    
+    # print(f"step = {curr_step} (reset):")
+    # print(f"\t obs = {obs}")
+    # print(f"\t info = {info}\n\n")
 
-        print(f"step = {curr_step}: ")
-        print(f"\t obs = {obs}")
-        print(f"\t reward = {reward}")
-        print(f"\t terminated = {terminated}")
-        print(f"\t truncated = {truncated}")
-        print(f"\t info = {info}")
+    model.learn(total_timesteps=2048*1, progress_bar=True, log_interval=10, reset_num_timesteps=False)
 
-        # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
-        # Invalid actions are replaced with 'do nothing' action
-        is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
-        print(f"\t is action valid = {is_action_valid}")
-        if not is_action_valid:
-            print(f"\t\t reason = {info['exception']}")
-        print("\n")
+    episodes = 10
+    avg_return = 0
+    avg_step = 0
+
+    for e in range(episodes):
+        curr_step = 0
+        curr_return = 0
+
+        is_done = False
+        obs, info = env.reset()
+
+        while not is_done and curr_step < max_steps:
+            # action = env.action_space.sample()
+            action = model.predict(obs)
+            obs, reward, terminated, truncated, info = env.step(action)
+
+            curr_step += 1
+            curr_return += reward
+            is_done = terminated or truncated
+
+            # print(f"step = {curr_step}: ")
+            # print(f"\t obs = {obs}")
+            # print(f"\t reward = {reward}")
+            # print(f"\t terminated = {terminated}")
+            # print(f"\t truncated = {truncated}")
+            # print(f"\t info = {info}")
+
+            # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
+            # Invalid actions are replaced with 'do nothing' action
+            # is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
+            # print(f"\t is action valid = {is_action_valid}")
+            # if not is_action_valid:
+                # print(f"\t\t reason = {info['exception']}")
+            # print("\n")
+
+        avg_return += curr_return
+        avg_step += curr_step
+
+    avg_return /= episodes
+    avg_step /= episodes
 
     print("###########")
     print("# SUMMARY #")
     print("###########")
-    print(f"return = {curr_return}")
-    print(f"total steps = {curr_step}")
+    print(f"return = {avg_return}")
+    print(f"total steps = {avg_step}")
     print("###########")
 
 
