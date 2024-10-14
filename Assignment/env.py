@@ -66,7 +66,7 @@ class Gym2OpEnv(gym.Env):
         # See Grid2Op 'getting started' notebooks for guidance
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
         # print("WARNING: setup_observations is not doing anything. Implement your own code in this method.")
-        obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
+        obs_attr_to_keep = ["rho", "topo_vect", "gen_p", "load_p", "actual_dispatch", 'target_dispatch']
         self._gym_env.observation_space.close()
         self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
                                                         #  attr_to_keep=obs_attr_to_keep
@@ -86,7 +86,8 @@ class Gym2OpEnv(gym.Env):
         # act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
 
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
-                                                           attr_to_keep=act_attr_to_keep)
+                                                        #    attr_to_keep=act_attr_to_keep
+                                                           )
         
         self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
 
@@ -140,7 +141,7 @@ def main():
         curr_return = 0
 
         is_done = False
-        obs, info = env.reset()
+        obs, info = env.reset() 
 
         while not is_done and curr_step < max_steps:
             # action = env.action_space.sample()
