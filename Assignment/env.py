@@ -55,10 +55,10 @@ class Gym2OpEnv(gym.Env):
 
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
 
-        # self.setup_observations()
+        self.setup_observations()
         self.setup_actions()
 
-        self.observation_space = self._gym_env.observation_space
+        # self.observation_space = self._gym_env.observation_space
         # self.action_space = self._gym_env.action_space
 
     def setup_observations(self):
@@ -67,14 +67,43 @@ class Gym2OpEnv(gym.Env):
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
         # print("WARNING: setup_observations is not doing anything. Implement your own code in this method.")
         obs_attr_to_keep = ["rho", "topo_vect", "gen_p", "load_p", "actual_dispatch", 'target_dispatch']
+
+        obs_gym = self._gym_env.observation_space
+
+        self._gym_env.observation_space = self._gym_env.observation_space.reencode_space("gen_p",
+                                   ScalerAttrConverter(substract=0.,
+                                                       divide=self._g2op_env.gen_pmax
+                                                       )
+                                   )
+        
+        # Create a new Box space with the scaled bounds
+        # scaled_load_p_space = Box(low=scaled_low, high=scaled_high, shape=load_p_space.shape, dtype=load_p_space.dtype)
+
+        # Use the scaled bounds to create the ScalerAttrConverter
+        load_p_max = obs_gym["load_p"].high
+        
+        # Normalize load_p between 0 and 1
+        self._gym_env.observation_space = self._gym_env.observation_space.reencode_space(
+            "load_p",
+            ScalerAttrConverter(
+                substract=0.0,  # Minimum value
+                divide=load_p_max  # Maximum value
+            )
+        )
         self._gym_env.observation_space.close()
-        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                        #  attr_to_keep=obs_attr_to_keep
-                                                         )
+        # self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
+        #                                                  attr_to_keep=obs_attr_to_keep
+        #                                                  )
+
+        self._gym_env.observation_space = self._gym_env.observation_space.keep_only_attr(obs_attr_to_keep)
         # export observation space for the Grid2opEnv
-        self.observation_space = Box(shape=self._gym_env.observation_space.shape,
-                                     low=self._gym_env.observation_space.low,
-                                     high=self._gym_env.observation_space.high)
+        # self.observation_space = Box(shape=self._gym_env.observation_space.shape,
+        #                              low=self._gym_env.observation_space.low,
+        #                              high=self._gym_env.observation_space.high)
+
+        self.observation_space = self._gym_env.observation_space
+        
+        self.observation_space
 
     def setup_actions(self):
         # TODO: Your code to specify & modify the action space goes here
@@ -86,7 +115,7 @@ class Gym2OpEnv(gym.Env):
         # act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
 
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
-                                                        #    attr_to_keep=act_attr_to_keep
+                                                           attr_to_keep=act_attr_to_keep
                                                            )
         
         self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
@@ -109,28 +138,28 @@ def main():
 
     env = Gym2OpEnv()
 
-    print("#####################")
-    print("# OBSERVATION SPACE #")
-    print("#####################")
-    print(env.observation_space)
-    print("#####################\n")
+    # print("#####################")
+    # print("# OBSERVATION SPACE #")
+    # print("#####################")
+    # print(env.observation_space)
+    # print("#####################\n")
 
-    print("#####################")
-    print("#   ACTION SPACE    #")
-    print("#####################")
-    print(env.action_space)
-    print("#####################\n\n")
+    # print("#####################")
+    # print("#   ACTION SPACE    #")
+    # print("#####################")
+    # print(env.action_space)
+    # print("#####################\n\n")
 
 
 
     model = PPO("MultiInputPolicy",env, verbose=1, n_steps=2048)
 
-    
+
     # print(f"step = {curr_step} (reset):")
     # print(f"\t obs = {obs}")
     # print(f"\t info = {info}\n\n")
 
-    model.learn(total_timesteps=2048*1, progress_bar=True, log_interval=10, reset_num_timesteps=False)
+    model.learn(total_timesteps=2048*1, progress_bar=False, log_interval=10, reset_num_timesteps=False)
 
     episodes = 10
     avg_return = 0
