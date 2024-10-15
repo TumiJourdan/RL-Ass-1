@@ -68,15 +68,21 @@ class Gym2OpEnv(gym.Env):
         # TODO: Your code to specify & modify the observation space goes here
         # See Grid2Op 'getting started' notebooks for guidance
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
+        obs_attr_to_keep = [
+            "rho", "p_or", "a_ex", "v_or", "v_ex",
+            "line_status", "topo_vect",
+            "time_before_cooldown_line", "time_before_cooldown_sub",
+            "gen_p", "gen_q", "target_dispatch", "actual_dispatch",
+            "load_p", "load_q",
+            "day", "hour_of_day"
+        ]
         self._gym_env.observation_space.close()
         self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                         attr_to_keep=obs_attr_to_keep
-                                                         )
-        # export observation space for the Grid2opEnv
+                                                        attr_to_keep=obs_attr_to_keep
+                                                        )
         self.observation_space = Box(shape=self._gym_env.observation_space.shape,
-                                     low=self._gym_env.observation_space.low,
-                                     high=self._gym_env.observation_space.high)
+                                    low=self._gym_env.observation_space.low,
+                                    high=self._gym_env.observation_space.high)
         
 
     def setup_actions(self):
@@ -84,7 +90,7 @@ class Gym2OpEnv(gym.Env):
         # See Grid2Op 'getting started' notebooks for guidance
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
         # user wants a multi-discrete action space
-        act_attr_to_keep = ["one_line_set", "one_sub_set"]
+        act_attr_to_keep = ["one_line_set", "one_sub_set", "set_bus", "redispatch", "curtail"]
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
                                                             attr_to_keep=act_attr_to_keep)
         self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
@@ -109,16 +115,7 @@ class CustomLoggingCallback(BaseCallback):
         self.total_rewards = []
 
     def _on_step(self) -> bool:
-        # Access logs
-        logs = self.locals.get('logs', {})
-        self.losses.append(logs.get('loss', 0))
-        self.value_losses.append(logs.get('value_loss', 0))
-
-        # Get reward if available
-        reward = self.locals.get('rewards', 0)
-        if reward:
-            self.rewards.append(reward)
-            self.total_rewards.append(np.sum(self.rewards))  # Cumulative rewards
+        
         wandb.log({"train_loss": logs.get('loss', 0), "val_loss":logs.get('value_loss', 0),"reward": reward})
         return True
 
@@ -133,7 +130,7 @@ def main():
 
 
     # Random agent interacting in environment #
-    print(torch.cuda.is_available())
+    
     max_steps = 100
 
     env = Gym2OpEnv()
@@ -154,8 +151,8 @@ def main():
     model = A2C("MlpPolicy", env, verbose=1)
     logging_callback = CustomLoggingCallback()
 
-#model = A2C.load("A2C", env=env)
-    model.learn(total_timesteps=10, callback=logging_callback)
+    #model = A2C.load("A2C", env=env)
+    model.learn(total_timesteps=20000, callback=logging_callback)
     model.save("A2C_improved")
 
 
