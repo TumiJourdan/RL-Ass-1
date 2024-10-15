@@ -3,7 +3,7 @@ from gymnasium.spaces import MultiDiscrete, Discrete, Box
 
 import grid2op
 from grid2op import gym_compat
-from grid2op.gym_compat import ContinuousToDiscreteConverter, MultiDiscreteActSpace, BoxGymObsSpace
+from grid2op.gym_compat import ContinuousToDiscreteConverter, MultiDiscreteActSpace, BoxGymObsSpace, ScalerAttrConverter
 from grid2op.Parameters import Parameters
 from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
