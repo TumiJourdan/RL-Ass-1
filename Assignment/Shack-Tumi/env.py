@@ -1,5 +1,7 @@
 import gymnasium as gym
 
+import torch
+
 import grid2op
 from grid2op import gym_compat
 from grid2op.Parameters import Parameters
@@ -14,6 +16,7 @@ from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace
 from gymnasium.spaces import Discrete, MultiDiscrete, Box
 from stable_baselines3.common.callbacks import BaseCallback
 import numpy as np
+import wandb
 # Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
     def __init__(
@@ -110,13 +113,13 @@ class CustomLoggingCallback(BaseCallback):
         logs = self.locals.get('logs', {})
         self.losses.append(logs.get('loss', 0))
         self.value_losses.append(logs.get('value_loss', 0))
-        
+
         # Get reward if available
         reward = self.locals.get('rewards', 0)
         if reward:
             self.rewards.append(reward)
             self.total_rewards.append(np.sum(self.rewards))  # Cumulative rewards
-            
+        wandb.log({"train_loss": logs.get('loss', 0), "val_loss":logs.get('value_loss', 0),"reward": reward})
         return True
 
     def _on_training_end(self):
@@ -124,8 +127,13 @@ class CustomLoggingCallback(BaseCallback):
         print(f"Average Value Loss: {np.mean(self.value_losses)}")
         print(f"Total Rewards: {np.sum(self.total_rewards)}")
 def main():
-    # Random agent interacting in environment #
 
+    
+    wandb.init(project="RL", name="Setup")
+
+
+    # Random agent interacting in environment #
+    print(torch.cuda.is_available())
     max_steps = 100
 
     env = Gym2OpEnv()
