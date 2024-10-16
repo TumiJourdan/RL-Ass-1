@@ -9,7 +9,8 @@ from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
 from grid2op.Reward import L2RPNReward, N1Reward, CombinedScaledReward
 from lightsim2grid import LightSimBackend
-
+from stable_baselines3.common.monitor import Monitor
+from wandb.integration.sb3 import WandbCallback
 # personal imports
 from stable_baselines3 import A2C
 from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace
@@ -100,36 +101,18 @@ class Gym2OpEnv(gym.Env):
         return self._gym_env.render()
 
 
-class CustomLoggingCallback(BaseCallback):
-    def __init__(self, verbose=0):
-        super(CustomLoggingCallback, self).__init__(verbose)
-        self.losses = []
-        self.value_losses = []
-        self.rewards = []
-        self.total_rewards = []
 
-    def _on_step(self) -> bool:
-        # Access logs
-        logs = self.locals.get('logs', {})
-        self.losses.append(logs.get('loss', 0))
-        self.value_losses.append(logs.get('value_loss', 0))
-
-        # Get reward if available
-        reward = self.locals.get('rewards', 0)
-        if reward:
-            self.rewards.append(reward)
-            self.total_rewards.append(np.sum(self.rewards))  # Cumulative rewards
-        wandb.log({"train_loss": logs.get('loss', 0), "val_loss":logs.get('value_loss', 0),"reward": reward})
-        return True
-
-    def _on_training_end(self):
-        print(f"Average Loss: {np.mean(self.losses)}")
-        print(f"Average Value Loss: {np.mean(self.value_losses)}")
-        print(f"Total Rewards: {np.sum(self.total_rewards)}")
 def main():
-
-    
-    wandb.init(project="RL", name="Setup")
+    config = {
+        "policy_type": "MlpPolicy",
+        "total_timesteps": 100000,  # Increase for better results
+        "env_name": "l2rpn_case14_sandbox",
+    }
+    run = wandb.init(
+        project="Grid20p",
+        config=config,
+        sync_tensorboard=True
+    )
 
 
     # Random agent interacting in environment #
@@ -137,6 +120,7 @@ def main():
     max_steps = 100
 
     env = Gym2OpEnv()
+    env = Monitor(env)
 
     print("#####################")
     print("# OBSERVATION SPACE #")
@@ -151,12 +135,14 @@ def main():
     print("#####################\n\n")
 
 
-    model = A2C("MlpPolicy", env, verbose=1)
-    logging_callback = CustomLoggingCallback()
+    model = A2C("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}",)
 
-#model = A2C.load("A2C", env=env)
-    model.learn(total_timesteps=10, callback=logging_callback)
-    model.save("A2C_improved")
+
+    # model = A2C.load("A2C", env=env)
+    model.learn(total_timesteps=100000, callback=WandbCallback())
+    run.finish()
+    # model.save("A2C")
+
 
 
     # curr_step = 0

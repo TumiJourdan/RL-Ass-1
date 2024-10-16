@@ -16,6 +16,9 @@ from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace
 from gymnasium.spaces import Discrete, MultiDiscrete, Box
 from stable_baselines3.common.callbacks import BaseCallback
 import numpy as np
+from stable_baselines3.common.monitor import Monitor
+from wandb.integration.sb3 import WandbCallback
+
 import wandb
 # Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
@@ -106,27 +109,18 @@ class Gym2OpEnv(gym.Env):
         return self._gym_env.render()
 
 
-class CustomLoggingCallback(BaseCallback):
-    def __init__(self, verbose=0):
-        super(CustomLoggingCallback, self).__init__(verbose)
-        self.losses = []
-        self.value_losses = []
-        self.rewards = []
-        self.total_rewards = []
-
-    def _on_step(self) -> bool:
-        
-        wandb.log({"train_loss": logs.get('loss', 0), "val_loss":logs.get('value_loss', 0),"reward": reward})
-        return True
-
-    def _on_training_end(self):
-        print(f"Average Loss: {np.mean(self.losses)}")
-        print(f"Average Value Loss: {np.mean(self.value_losses)}")
-        print(f"Total Rewards: {np.sum(self.total_rewards)}")
 def main():
 
-    
-    wandb.init(project="RL", name="Setup")
+    config = {
+        "policy_type": "MlpPolicy",
+        "total_timesteps": 100000,  # Increase for better results
+        "env_name": "l2rpn_case14_sandbox",
+    }
+    run = wandb.init(
+        project="Grid20p",
+        config=config,
+        sync_tensorboard=True
+    )
 
 
     # Random agent interacting in environment #
@@ -134,6 +128,7 @@ def main():
     max_steps = 100
 
     env = Gym2OpEnv()
+    env = Monitor(env)
 
     print("#####################")
     print("# OBSERVATION SPACE #")
@@ -148,11 +143,11 @@ def main():
     print("#####################\n\n")
 
 
-    model = A2C("MlpPolicy", env, verbose=1)
-    logging_callback = CustomLoggingCallback()
+    model = A2C("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}",)
+
 
     #model = A2C.load("A2C", env=env)
-    model.learn(total_timesteps=20000, callback=logging_callback)
+    model.learn(total_timesteps=20000, callback=WandbCallback())
     model.save("A2C_improved")
 
 
