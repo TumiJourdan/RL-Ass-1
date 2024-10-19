@@ -1,7 +1,5 @@
 import gymnasium as gym
-
 import torch
-
 import grid2op
 from grid2op import gym_compat
 from grid2op.Parameters import Parameters
@@ -9,17 +7,17 @@ from grid2op.Action import PlayableAction
 from grid2op.Observation import CompleteObservation
 from grid2op.Reward import L2RPNReward, N1Reward, CombinedScaledReward
 from lightsim2grid import LightSimBackend
-
+from stable_baselines3.common.monitor import Monitor
+from wandb.integration.sb3 import WandbCallback
 # personal imports
 from stable_baselines3 import A2C
 from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace
 from gymnasium.spaces import Discrete, MultiDiscrete, Box, Dict
 from stable_baselines3.common.callbacks import BaseCallback
 import numpy as np
-from stable_baselines3.common.monitor import Monitor
-from wandb.integration.sb3 import WandbCallback
-
 import wandb
+# GNN
+from GNN_Extractor import CustomGNN
 # Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
     def __init__(
@@ -64,28 +62,38 @@ class Gym2OpEnv(gym.Env):
         self.setup_observations()
         self.setup_actions()
 
-        self.observation_space = self._gym_env.observation_space
-        self.action_space = self._gym_env.action_space
+        # self.observation_space = self._gym_env.observation_space
+        # self.action_space = self._gym_env.action_space
 
     def setup_observations(self):
-        # TODO: Your code to specify & modify the observation space goes here
-        # See Grid2Op 'getting started' notebooks for guidance
-        #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        obs_attr_to_keep = [
-            "rho", "p_or", "a_ex", "v_or", "v_ex",
-            "line_status", "topo_vect",
-            "time_before_cooldown_line", "time_before_cooldown_sub",
-            "gen_p", "gen_q", "target_dispatch", "actual_dispatch",
-            "load_p", "load_q",
-            "day", "hour_of_day"
-        ]
-        self._gym_env.observation_space.close()
-        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                        attr_to_keep=obs_attr_to_keep
-                                                        )
-        self.observation_space = Box(shape=self._gym_env.observation_space.shape,
-                                    low=self._gym_env.observation_space.low,
-                                    high=self._gym_env.observation_space.high)
+            obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
+            self._gym_env.observation_space.close()
+            self._gym_env.observation_space = 
+            
+            # Get the graph structure
+            obs = self._g2op_env.get_obs()
+            
+            print("Rho: {}".format(obs.rho.shape))
+            print("p_or: {}".format(obs.p_or.shape))
+            print("gen_p: {}".format(obs.gen_p.shape))
+            print("load_p: {}".format(obs.load_p.shape))
+
+            graph = obs.get_energy_graph()
+
+            self.edge_index = torch.tensor(list(graph.edges), dtype=torch.long).t().contiguous()
+            self.observation_space = Dict({
+            "features": Box(
+                low=self._gym_env.observation_space.low,
+                high=self._gym_env.observation_space.high,
+                dtype=np.float32
+            ),
+            "edge_index": Box(
+                low=0,
+                high=max(self.edge_index.max().item(), len(obs_attr_to_keep)),
+                shape=self.edge_index.shape,
+                dtype=np.int64
+            )
+        })
         
 
     def setup_actions(self):
@@ -99,34 +107,53 @@ class Gym2OpEnv(gym.Env):
         self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
 
     def reset(self, seed=None):
-        return self._gym_env.reset(seed=seed, options=None)
+        obs, info = self._gym_env.reset(seed=seed)
+        processed_obs = self._process_observation(obs)
+        print(f"Reset observation: {processed_obs}",flush=True)  # Add this for debugging
+        return processed_obs, info
 
     def step(self, action):
-        return self._gym_env.step(action)
+        obs, reward, terminated, truncated, info = self._gym_env.step(action)
+        processed_obs = self._process_observation(obs)
+        print(f"Step observation: {processed_obs}",flush=True)  # Add this for debugging
+        return processed_obs, reward, terminated, truncated, info
+    
+    def _process_observation(self, obs):
+        # Example for extracting node-specific attributes
+        # Assuming `obs` contains structured data for nodes
+        node_data = []
+
+        for node_id in range(number_of_nodes):
+            node_features = {
+                "rho": obs["rho"][node_id],
+                "p_or": obs["p_or"][node_id],
+                "gen_p": obs["gen_p"][node_id],
+                "load_p": obs["load_p"][node_id]
+            }
+            node_data.append(node_features)
+
+        return {
+            "node_features": node_data,
+            "edge_index": self.edge_index
+        }
 
     def render(self):
         # TODO: Modify for your own required usage
         return self._gym_env.render()
 
-
 def main():
-
     config = {
-        "policy_type": "CnnPolicy",
-        "total_timesteps": 100000,  # Increase for better results
+        "policy_type": "MlpPolicy",
+        "total_timesteps": 100000,
         "env_name": "l2rpn_case14_sandbox",
     }
     run = wandb.init(
         project="Grid20p",
         config=config,
-        monitor_gym=True,
         sync_tensorboard=True
     )
 
-
-    # Random agent interacting in environment #
-    
-    max_steps = 100
+    print(torch.cuda.is_available())
 
     env = Gym2OpEnv()
     env = Monitor(env)
@@ -143,55 +170,21 @@ def main():
     print(env.action_space)
     print("#####################\n\n")
 
+    policy_kwargs = dict(
+        features_extractor_class=CustomGNN,
+        features_extractor_kwargs=dict(features_dim=128),
+    )
 
-    load = False
-    if(load):
-        model = A2C.load("A2C_improved", env=env)
-    else:
-        model = A2C("MultiInputPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}",)
+    model = A2C(
+        "MultiInputPolicy",
+        env,
+        policy_kwargs=policy_kwargs,
+        verbose=1,
+        tensorboard_log=f"runs/{run.id}",
+    )
+
     model.learn(total_timesteps=100000, callback=WandbCallback())
-    model.save("A2C_MI")
-
-
-    # curr_step = 0
-    # curr_return = 0
-
-    # is_done = False
-    # obs, info = env.reset()
-    # print(f"step = {curr_step} (reset):")
-    # print(f"\t obs = {obs}")
-    # print(f"\t info = {info}\n\n")
-
-    # while not is_done and curr_step < max_steps:
-    #     action = env.action_space.sample()
-    #     obs, reward, terminated, truncated, info = env.step(action)
-
-    #     curr_step += 1
-    #     curr_return += reward
-    #     is_done = terminated or truncated
-
-    #     print(f"step = {curr_step}: ")
-    #     print(f"\t obs = {obs}")
-    #     print(f"\t reward = {reward}")
-    #     print(f"\t terminated = {terminated}")
-    #     print(f"\t truncated = {truncated}")
-    #     print(f"\t info = {info}")
-
-    #     # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
-    #     # Invalid actions are replaced with 'do nothing' action
-    #     is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
-    #     print(f"\t is action valid = {is_action_valid}")
-    #     if not is_action_valid:
-    #         print(f"\t\t reason = {info['exception']}")
-    #     print("\n")
-
-    # print("###########")
-    # print("# SUMMARY #")
-    # print("###########")
-    # print(f"return = {curr_return}")
-    # print(f"total steps = {curr_step}")
-    # print("###########")
-
+    run.finish()
 
 if __name__ == "__main__":
     main()
