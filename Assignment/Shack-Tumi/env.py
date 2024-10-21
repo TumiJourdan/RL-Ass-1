@@ -62,8 +62,8 @@ class Gym2OpEnv(gym.Env):
         self.setup_observations()
         self.setup_actions()
 
-        self.observation_space = self._gym_env.observation_space
-        self.action_space = self._gym_env.action_space
+        # self.observation_space = self._gym_env.observation_space
+        # self.action_space = self._gym_env.action_space
 
     def setup_observations(self):
         # TODO: Your code to specify & modify the observation space goes here

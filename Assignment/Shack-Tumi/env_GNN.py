@@ -11,7 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 from wandb.integration.sb3 import WandbCallback
 # personal imports
 from stable_baselines3 import A2C
-from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace
+from grid2op.gym_compat import BoxGymObsSpace,MultiDiscreteActSpace,GymObservationSpace
 from gymnasium.spaces import Discrete, MultiDiscrete, Box, Dict
 from stable_baselines3.common.callbacks import BaseCallback
 import numpy as np
@@ -58,43 +58,45 @@ class Gym2OpEnv(gym.Env):
         ##########
 
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
-
+        
+        self.observation_space = self._gym_env.observation_space
+        self.obs_node_attr =[]
+        self.obs_edge_attr =[]
         self.setup_observations()
         self.setup_actions()
 
-        # self.observation_space = self._gym_env.observation_space
-        # self.action_space = self._gym_env.action_space
+
 
     def setup_observations(self):
-            obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
-            self._gym_env.observation_space.close()
-            self._gym_env.observation_space = 
-            
-            # Get the graph structure
-            obs = self._g2op_env.get_obs()
-            
-            print("Rho: {}".format(obs.rho.shape))
-            print("p_or: {}".format(obs.p_or.shape))
-            print("gen_p: {}".format(obs.gen_p.shape))
-            print("load_p: {}".format(obs.load_p.shape))
+        """Define the observation space with node and edge features."""
+        # TODO: Your code to specify & modify the observation space goes here
+        # See Grid2Op 'getting started' notebooks for guidance
+        #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
+        obs_attr_to_keep = ["rho", "p_or", "gen_p", "load_p"]
+        self.obs_node_attr = ["gen_p","load_p"]
+        self.obs_edge_attr = ["rho","p_or"]
 
-            graph = obs.get_energy_graph()
+        self._gym_env.observation_space.close()
 
-            self.edge_index = torch.tensor(list(graph.edges), dtype=torch.long).t().contiguous()
-            self.observation_space = Dict({
-            "features": Box(
-                low=self._gym_env.observation_space.low,
-                high=self._gym_env.observation_space.high,
-                dtype=np.float32
-            ),
-            "edge_index": Box(
-                low=0,
-                high=max(self.edge_index.max().item(), len(obs_attr_to_keep)),
-                shape=self.edge_index.shape,
-                dtype=np.int64
-            )
+        # this is important as it is what is returned in our step and our reset functions (to us , we then can change it and have the function return somthing else)
+        # we have to use their template code here as we cant control what the step function returns, we can only limit it
+        self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
+                                                         attr_to_keep=obs_attr_to_keep
+                                                         )
+
+        n_nodes = self._g2op_env.n_sub
+        n_edges = self._g2op_env.n_line
+
+        obs = self._g2op_env.get_obs()
+        edges = list(obs.get_energy_graph().edges)
+        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+
+        # Define the observation space // this gets passed to the extractor initialization
+        self.observation_space = Dict({
+            "node_features": Box(low=-float('inf'), high=float('inf'), shape=(n_nodes, 2)),
+            "edge_features": Box(low=-float('inf'), high=float('inf'), shape=(n_edges, 2)),
+            "edge_index": Box(low=0, high=n_nodes-1, shape=(2, n_edges), dtype=int)
         })
-        
 
     def setup_actions(self):
         # TODO: Your code to specify & modify the action space goes here
@@ -102,41 +104,83 @@ class Gym2OpEnv(gym.Env):
         #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
         # user wants a multi-discrete action space
         act_attr_to_keep = ["one_line_set", "one_sub_set"]
+        
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space,
                                                             attr_to_keep=act_attr_to_keep)
         self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         obs, info = self._gym_env.reset(seed=seed)
-        processed_obs = self._process_observation(obs)
-        print(f"Reset observation: {processed_obs}",flush=True)  # Add this for debugging
-        return processed_obs, info
+        parsed_obs = self._convert_observation(obs)
+        return parsed_obs, info
 
     def step(self, action):
-        obs, reward, terminated, truncated, info = self._gym_env.step(action)
-        processed_obs = self._process_observation(obs)
-        print(f"Step observation: {processed_obs}",flush=True)  # Add this for debugging
-        return processed_obs, reward, terminated, truncated, info
+        obs, reward, done, truncated, info = self._gym_env.step(action)
+        parsed_obs = self._convert_observation(obs)
+        return parsed_obs, reward, done, truncated, info
     
-    def _process_observation(self, obs):
-        # Example for extracting node-specific attributes
-        # Assuming `obs` contains structured data for nodes
-        node_data = []
 
-        for node_id in range(number_of_nodes):
-            node_features = {
-                "rho": obs["rho"][node_id],
-                "p_or": obs["p_or"][node_id],
-                "gen_p": obs["gen_p"][node_id],
-                "load_p": obs["load_p"][node_id]
-            }
-            node_data.append(node_features)
+    
 
+    def _convert_observation(self, obs):
+        """Convert flattened Box observations into tensors for nodes and edges."""
+        # Parse the observation dictionary into separate arrays keyed by attribute name
+        parsed_obs = self._parse_observation(obs)
+        # Get the number of nodes and edges from the environment
+        n_nodes = self._g2op_env.n_sub
+        n_edges = self._g2op_env.n_line
+
+        # Construct the node and edge features using the parsed observation
+        node_features = self._construct_node_features(parsed_obs)  # Shape: (n_nodes, n_node_attr)
+        edge_features = self._construct_edge_features(parsed_obs)  # Shape: (n_edges, n_edge_attr)
+
+        # Convert the node and edge features into tensors
+        node_features = torch.tensor(node_features, dtype=torch.float32)
+        edge_features = torch.tensor(edge_features, dtype=torch.float32)
+
+        # Generate the edge index (connectivity graph) as a tensor
+        obs = self._g2op_env.get_obs()
+        edges = list(obs.get_energy_graph().edges)
+        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+        
         return {
-            "node_features": node_data,
-            "edge_index": self.edge_index
+            "node_features": node_features,
+            "edge_features": edge_features,
+            "edge_index": edge_index
         }
+    
+    def _parse_observation(self, obs):
+        parsed_obs = {}
+        current_idx = 0
+        for attr in self._gym_env.observation_space._attr_to_keep:
+            prop = self._gym_env.observation_space._dict_properties[attr]
+            shape = prop[2]
+            size = np.prod(shape)
+            parsed_obs[attr] = obs[current_idx:current_idx + size].reshape(shape)
+            current_idx += size
+        return parsed_obs
+    
+    # sadly we need to do this by hand
+    def _construct_node_features(self, parsed_obs):
+        """Construct node feature matrix (n_sub × n_node_attr)."""
+        node_features = np.zeros((self._g2op_env.n_sub, len(self.obs_node_attr)), dtype=np.float32)
 
+        # Assign generator power to nodes because of gen_to_subid and load_to_subid being case to case
+        for gen_id, sub_id in enumerate(self._g2op_env.gen_to_subid):
+            node_features[sub_id, 0] += parsed_obs["gen_p"][gen_id]  # Assign gen_p
+
+        # Assign load power to nodes
+        for load_id, sub_id in enumerate(self._g2op_env.load_to_subid):
+            node_features[sub_id, 1] += parsed_obs["load_p"][load_id]  # Assign load_p
+
+        return node_features
+    
+
+    def _construct_edge_features(self, parsed_obs):
+        """Construct edge feature matrix (n_edges × n_edge_attr) programmatically."""
+        edge_features = np.column_stack([parsed_obs[attr] for attr in self.obs_edge_attr])
+        return edge_features.astype(np.float32)
+    
     def render(self):
         # TODO: Modify for your own required usage
         return self._gym_env.render()
@@ -172,7 +216,7 @@ def main():
 
     policy_kwargs = dict(
         features_extractor_class=CustomGNN,
-        features_extractor_kwargs=dict(features_dim=128),
+        features_extractor_kwargs=dict(features_dim=1120),
     )
 
     model = A2C(
