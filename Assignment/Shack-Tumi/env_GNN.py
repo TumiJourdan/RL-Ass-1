@@ -187,8 +187,8 @@ class Gym2OpEnv(gym.Env):
 
 def main():
     config = {
-        "policy_type": "MlpPolicy",
-        "total_timesteps": 100000,
+        "policy_type": "MultiInputPolicy",
+        "total_timesteps": 500000,
         "env_name": "l2rpn_case14_sandbox",
     }
     run = wandb.init(
@@ -214,21 +214,27 @@ def main():
     print(env.action_space)
     print("#####################\n\n")
 
+    def rmsprop_with_momentum(params, **kwargs):
+        # Use kwargs to pass in the learning rate and other optimizer settings
+        return torch.optim.RMSprop(params, momentum=0.9, alpha=0.99, eps=1e-5, **kwargs)
+    
     policy_kwargs = dict(
         features_extractor_class=CustomGNN,
         features_extractor_kwargs=dict(features_dim=1120),
+        optimizer_class=rmsprop_with_momentum,  # Add custom optimizer
     )
 
     model = A2C(
-        "MultiInputPolicy",
+        config["policy_type"],
         env,
         policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log=f"runs/{run.id}",
     )
 
-    model.learn(total_timesteps=100000, callback=WandbCallback())
+    model.learn(total_timesteps=config["total_timesteps"], callback=WandbCallback())
     run.finish()
+    model.save("A2C_GNN")
 
 if __name__ == "__main__":
     main()

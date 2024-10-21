@@ -246,10 +246,14 @@ def main():
     print("#####################")
     print(env.action_space)
     print("#####################\n\n")
-
+    def rmsprop_with_momentum(params, **kwargs):
+        # Use kwargs to pass in the learning rate and other optimizer settings
+        return torch.optim.RMSprop(params, momentum=0.9, alpha=0.99, eps=1e-5, **kwargs)
+    
     policy_kwargs = dict(
             features_extractor_class=CustomGNN,
             features_extractor_kwargs=dict(features_dim=1120),
+            optimizer_class=rmsprop_with_momentum,  # Add custom optimizer
         )
 
     model = A2C(config["policy_type"],
