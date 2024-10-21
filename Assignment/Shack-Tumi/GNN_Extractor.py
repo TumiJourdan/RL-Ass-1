@@ -46,7 +46,8 @@ class CustomGNN(BaseFeaturesExtractor):
         self.conv2 = NNConv(32, 16, self.create_edge_nn(n_edge_features_number,16 * 32))
 
         number_of_nodes = observation_space["node_features"].shape[0]
-        self.fc = nn.Linear(16, 14*20*4)
+
+        self.fc = nn.Linear(16, features_dim)
 
     def create_edge_nn(self, in_features, out_features):
         return nn.Sequential(

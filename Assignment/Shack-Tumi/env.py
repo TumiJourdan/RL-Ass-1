@@ -79,7 +79,7 @@ class Gym2OpEnv(gym.Env):
         ]
         self._gym_env.observation_space.close()
         self._gym_env.observation_space = BoxGymObsSpace(self._g2op_env.observation_space,
-                                                         #  attr_to_keep=obs_attr_to_keep
+                                                          attr_to_keep=obs_attr_to_keep
                                                          )
         # export observation space for the Grid2opEnv
         self.observation_space = Box(shape=self._gym_env.observation_space.shape,
