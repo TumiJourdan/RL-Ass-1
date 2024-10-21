@@ -185,7 +185,7 @@ def main():
     }
 
     run = wandb.init(
-        project="Grid20p",
+        project="Grid20pFinal",
         config=config,
         sync_tensorboard=True
     )
@@ -213,7 +213,7 @@ def main():
                 tensorboard_log=f"runs/{run.id}",
                 max_grad_norm=0.5)
 
-    model = A2C.load("A2C_curriculum_trained 200k.zip", env=env, device="auto", print_system_info=True)
+    # model = A2C.load("A2C_curriculum_trained 200k.zip", env=env, device="auto", print_system_info=True)
     callback = CurriculumCallback()
 
 
@@ -222,6 +222,8 @@ def main():
         callback=[WandbCallback(), callback]#
     )
     model.save("A2C_curriculum_trained")
+
+    run.finish()
 
 
 if __name__ == "__main__":

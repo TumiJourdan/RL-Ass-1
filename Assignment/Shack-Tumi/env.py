@@ -85,7 +85,7 @@ class Gym2OpEnv(gym.Env):
         self.observation_space = Box(shape=self._gym_env.observation_space.shape,
                                      low=self._gym_env.observation_space.low,
                                      high=self._gym_env.observation_space.high)
-        
+
 
     def setup_actions(self):
         # TODO: Your code to specify & modify the action space goes here
@@ -112,11 +112,11 @@ class Gym2OpEnv(gym.Env):
 def main():
     config = {
         "policy_type": "MlpPolicy",
-        "total_timesteps": 100000,  # Increase for better results
+        "total_timesteps": 500000,  # Increase for better results
         "env_name": "l2rpn_case14_sandbox",
     }
     run = wandb.init(
-        project="Grid20p",
+        project="Grid20pFinal",
         config=config,
         sync_tensorboard=True
     )
@@ -142,13 +142,14 @@ def main():
     print("#####################\n\n")
 
 
-    # model = A2C("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}",)
+    model = A2C("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}",learning_rate=1e-3)
 
 
-    model = A2C.load("A2CBaseline.zip", env=env, device="auto", print_system_info=True)
-    model.learn(total_timesteps=100000, callback=WandbCallback())
+
+    # model = A2C.load("A2CBaseline.zip", env=env, device="auto", print_system_info=True)
+    model.learn(total_timesteps=500000, callback=WandbCallback())
     run.finish()
-    model.save("A2C")
+    model.save("A2CBase")
 
 
 if __name__ == "__main__":
