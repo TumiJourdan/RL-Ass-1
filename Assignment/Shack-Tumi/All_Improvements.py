@@ -18,6 +18,8 @@ from wandb.integration.sb3 import WandbCallback
 import wandb
 from GNN_Extractor import CustomGNN
 
+
+# curriculum training
 class CurriculumCallback(BaseCallback):
     def __init__(self, verbose=0):
         super().__init__(verbose)
@@ -31,7 +33,7 @@ class CurriculumCallback(BaseCallback):
         ]
         self.stage_timesteps = 20000  # Steps per stage
         self.current_stage = 0
-
+    # custom on step that uses the correct amount of actions for curriculum stage
     def _on_step(self) -> bool:
         # Check if we need to update the action space
         if (self.num_timesteps % self.stage_timesteps == 0 and
@@ -87,7 +89,7 @@ class Gym2OpEnv(gym.Env):
         self.obs_node_attr =[]
         self.obs_edge_attr =[]
         self.setup_observations()
-        self.setup_actions()
+        # self.setup_actions()
 
     def update_action_space(self, available_actions):
         self._gym_env.action_space = MultiDiscreteActSpace(
@@ -221,7 +223,7 @@ def main():
         "total_timesteps": 500000,  # Increase for better results
         "env_name": "l2rpn_case14_sandbox",
     }
-
+    # wandb initialization
     run = wandb.init(
         project="Grid20pFinal",
         config=config,
@@ -268,7 +270,7 @@ def main():
 
     model.learn(
         total_timesteps=config["total_timesteps"],
-        callback=[WandbCallback(), callback],
+        callback=[WandbCallback(), callback],#WandbCallback()
         
     )
     model.save("A2C_curriculum_trained")
