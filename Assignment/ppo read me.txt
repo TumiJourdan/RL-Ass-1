@@ -1,0 +1,3 @@
+To use the ppo_env.py file, go into the main function and change the variables for agent to the different agents and if you want to train or use a gnn.
+
+Please note the gnn is onl used for the multi agent and hierarchical models.

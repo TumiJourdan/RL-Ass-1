@@ -344,9 +344,10 @@ class Gym2OpEnv(gym.Env):
 
 
 def main():
-    # Random agent interacting in environment 
 
+    # Agent Choice: base, improved, multi-agent, hierarchy, random
     agent = 'random'
+    "Train Choice: base, improved, multi-agent, hierarchy"
     train = None
     use_gnn = False
 
@@ -381,11 +382,13 @@ def main():
         if agent == 'base':
             model = PPO('MultiInputPolicy', env=env, verbose=1, tensorboard_log="runs/base_agent")
             model_name = 'base_agent'
-            model.set_parameters('models/base_agent')
+            if train is None:
+                model.set_parameters('models/base_agent')
         else:
             model = PPO('MultiInputPolicy', env=env, verbose=1, tensorboard_log="runs/improved_agent")
             model_name = 'improved_agent'
-            model.set_parameters('models/improved_agent')
+            if train is None:
+                model.set_parameters('models/improved_agent')
 
         if train == 'base' or train == 'improved':
             wandb.init(
@@ -432,12 +435,12 @@ def main():
             ppo_curtail = PPO(policy='MultiInputPolicy', env=env_curtail_agent, verbose=1, tensorboard_log="runs/curtail",)
             ppo_redispatch = PPO(policy='MultiInputPolicy', env=env_redispatch_agent, verbose=1, tensorboard_log="runs/redispatch",)
 
-        if use_gnn:
+        if train is None and use_gnn:
             ppo_change_bus.set_parameters('models/multi-agent models/change_bus_gnn_agent')
             ppo_change_line_status.set_parameters('models/multi-agent models/change_line_status_gnn_agent')
             ppo_curtail.set_parameters('models/multi-agent models/curtail_gnn_agent')
             ppo_redispatch.set_parameters('models/multi-agent models/redispatch_gnn_agent')
-        else:
+        elif train is None:
             ppo_change_bus.set_parameters('models/multi-agent models/change_bus_agent')
             ppo_change_line_status.set_parameters('models/multi-agent models/change_line_status_agent')
             ppo_curtail.set_parameters('models/multi-agent models/curtail_agent')
@@ -529,8 +532,8 @@ def main():
 
 
         if train == 'hierarchy':
-            name = f'models/{agent}'
-            name += f'_agent' if not use_gnn else f'_gnn_agent'
+            name = f'{agent}'
+            name += f'agent' if not use_gnn else f'_gnn_agent'
             wandb.init(
                     project="RL Assignment",
                     config=config,
