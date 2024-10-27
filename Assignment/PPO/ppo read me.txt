@@ -1,0 +1,2 @@
+To run ppo_env.py just run in console: python ppo_env.py
+Then follow what the console tells you 

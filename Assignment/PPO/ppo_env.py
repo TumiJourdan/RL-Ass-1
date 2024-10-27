@@ -1,11 +1,12 @@
 import gymnasium as gym
 from gymnasium.spaces import MultiBinary, Box, Dict, MultiDiscrete
 
+from wrappers import *
+
 import wandb
 from wandb.integration.sb3 import WandbCallback
 
 import numpy as np
-# from typing import Dict, List, Tuple
 
 import grid2op
 from grid2op import gym_compat
@@ -19,156 +20,64 @@ from lightsim2grid import LightSimBackend
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*utcnow.*")
+import argparse
 
 import torch
 
 from GNN_Extractor import CustomGNN
 
-class SingleAgentWrapper(gym.Env): #This is used for the individual agents in the multiagent
-    def __init__(self, env, agent_action_key):
-        super(SingleAgentWrapper, self).__init__()
-        self.env = env
-        self.agent_action_key = agent_action_key  # e.g., "change_line_status", "curtail", "redispatch"
-        
-        # Share the observation space among all agents
-        self.observation_space = self.env.observation_space
-        
-        # Action space is limited to one key for this agent
-        self.action_space = self.env.action_space[self.agent_action_key]
-
-    def step(self, action):
-        # Create a combined action dict where only the relevant part is filled by this agent
-        combined_action = {self.agent_action_key: action}
-        return self.env.step(combined_action)
-
-    def reset(self, seed=None):
-        return self.env.reset(seed=seed)
-
-    def render(self, mode='human'):
-        return self.env.render(mode=mode)
-
-class MultiAgentWrapper(gym.Env):
-    def __init__(self, env, agent_action_keys:list):
-        super(MultiAgentWrapper, self).__init__()
-        self.env = env
-        self.agent_action_keys = agent_action_keys  # e.g., "change_line_status", "curtail", "redispatch"
-        
-        # Share the observation space among all agents
-        self.observation_space = self.env.observation_space
-        
-        # Action space is limited to one key for this agent
-        self.action_space = self.env.action_space
-
-    def step(self, actions):
-        # Create a combined action dict where only the relevant part is filled by this agent
-        combined_action = {
-            self.agent_action_keys[0]: actions[0],
-            self.agent_action_keys[1]: actions[1],
-            self.agent_action_keys[2]: actions[2],
-            self.agent_action_keys[3]: actions[3]
-        }
-        return self.env.step(combined_action)
-
-    def reset(self, seed=None):
-        return self.env.reset(seed=seed)
-
-    def render(self, mode='human'):
-        return self.env.render(mode=mode)
-    
-
-class HierarchyWrapper(gym.Env):
-    def __init__(self, env, agent_action_keys:list, agent_list) -> None:
-        super(HierarchyWrapper, self).__init__()
-
-        self.env = env
-
-        self.agent_action_keys = agent_action_keys  # e.g., "change_line_status", "curtail", "redispatch"
-        self.agent_list = agent_list
-
-        # Share the observation space among all agents
-        # self.observation_space = self.env.hierarchy_observation_space
-        self.observation_space = self.env.observation_space
-
-        self.action_space = MultiBinary(len(agent_list))
-
-        self.obs = None
-
-    def step(self, action):
-        # Create a combined action dict where only the relevant part is filled by this agent
-
-        combined_action = {}
-
-        # print(action)
-
-        for i, act in enumerate(action):
-            if act:
-                combined_action[self.agent_action_keys[i]] = self.agent_list[i].predict(self.obs)[0]
-
-        # print(combined_action)
-
-        step_return = self.env.step(combined_action)
-
-        self.obs = step_return[0]
-
-        return step_return
-
-    def reset(self, seed=None):
-        obs, info = self.env.reset(seed=seed)
-        self.obs = obs
-        return obs, info
-
-    def render(self, mode='human'):
-        return self.env.render(mode=mode)
-
-
-# Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
-    def __init__(
-            self,
-            agent_type,
-            use_gnn
-    ):
+    """
+    A Gymnasium wrapper around the Grid2Op environment for power grid control.
+    This environment allows the use of standard RL algorithms with Grid2Op.
+    """
+    
+    def __init__(self, agent_type, use_gnn):
+        """
+        Initialize the environment with specified agent type and GNN usage.
+        
+        Args:
+            agent_type (str): Type of agent ('base', 'improved', 'multi-agent', or 'hierarchy')
+            use_gnn (bool): Whether to use Graph Neural Network for state representation
+        """
         super().__init__()
 
+        # Initialize backend and environment name
         self._backend = LightSimBackend()
-        self._env_name = "l2rpn_case14_sandbox"  # DO NOT CHANGE
+        self._env_name = "l2rpn_case14_sandbox"  # Standard test case with 14 buses
 
+        # Set up action and observation classes
         action_class = PlayableAction
         observation_class = CompleteObservation
-        reward_class = CombinedScaledReward  # Setup further below
+        reward_class = CombinedScaledReward
 
-        # DO NOT CHANGE Parameters
-        # See https://grid2op.readthedocs.io/en/latest/parameters.html
+        # Configure environment parameters
         p = Parameters()
-        p.MAX_SUB_CHANGED = 4  # Up to 4 substations can be reconfigured each timestep
-        p.MAX_LINE_STATUS_CHANGED = 4  # Up to 4 powerline statuses can be changed each timestep
+        p.MAX_SUB_CHANGED = 4  # Maximum number of substations that can be reconfigured per step
+        p.MAX_LINE_STATUS_CHANGED = 4  # Maximum number of power lines that can be switched per step
 
-        # Make grid2op env
+        # Create the Grid2Op environment
         self._g2op_env = grid2op.make(
-            self._env_name, backend=self._backend, test=False,
-            action_class=action_class, observation_class=observation_class,
-            reward_class=reward_class, param=p
+            self._env_name, 
+            backend=self._backend, 
+            test=False,
+            action_class=action_class, 
+            observation_class=observation_class,
+            reward_class=reward_class, 
+            param=p
         )
 
-        ##########
-        # REWARD #
-        ##########
-        # NOTE: This reward should not be modified when evaluating RL agent
-        # See https://grid2op.readthedocs.io/en/latest/reward.html
+        # Setup reward function: combines N1 security criterion and L2RPN operational reward
         cr = self._g2op_env.get_reward_instance()
         cr.addReward("N1", N1Reward(), 1.0)
         cr.addReward("L2RPN", L2RPNReward(), 1.0)
-        # reward = N1 + L2RPN
         cr.initialize(self._g2op_env)
-        ##########
 
+        # Create Gymnasium-compatible environment
         self._gym_env = gym_compat.GymEnv(self._g2op_env)
-
         self.use_gnn = use_gnn
 
+        # Configure environment based on agent type
         if agent_type == "base":
             self.setup_base_actions()
         elif agent_type == "improved":
@@ -181,88 +90,92 @@ class Gym2OpEnv(gym.Env):
             else:
                 self.setup_observations()
         
+        # Set observation and action spaces
         if not self.use_gnn:
             self.observation_space = self._gym_env.observation_space
-        
         self.action_space = self._gym_env.action_space
 
     def setup_observations(self):
-        # TODO: Your code to specify & modify the observation space goes here
-        # See Grid2Op 'getting started' notebooks for guidance
-        #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        # print("WARNING: setup_observations is not doing anything. Implement your own code in this method.")
+        """
+        Configure the observation space for standard (non-GNN) agents.
+        Normalizes generator and load powers, and selects relevant features.
+        """
         obs_attr_to_keep = ["rho", "topo_vect", "gen_p", "load_p", "actual_dispatch", 'target_dispatch']
-
         obs_gym = self._gym_env.observation_space
 
-        self._gym_env.observation_space = self._gym_env.observation_space.reencode_space("gen_p",
-                                   ScalerAttrConverter(substract=0.,
-                                                       divide=self._g2op_env.gen_pmax
-                                                       )
-                                   )
-
-        # Use the scaled bounds to create the ScalerAttrConverter
-        load_p_max = obs_gym["load_p"].high
-        
-        # # Normalize load_p between 0 and 1
+        # Normalize generator power by maximum capacity
         self._gym_env.observation_space = self._gym_env.observation_space.reencode_space(
-            "load_p",
+            "gen_p",
             ScalerAttrConverter(
-                substract=0.0,  # Minimum value
-                divide=load_p_max  # Maximum value
+                substract=0.,
+                divide=self._g2op_env.gen_pmax
             )
         )
 
+        # Normalize load power
+        load_p_max = obs_gym["load_p"].high
+        self._gym_env.observation_space = self._gym_env.observation_space.reencode_space(
+            "load_p",
+            ScalerAttrConverter(
+                substract=0.0,
+                divide=load_p_max
+            )
+        )
+
+        # Keep only selected attributes
         self._gym_env.observation_space = self._gym_env.observation_space.keep_only_attr(obs_attr_to_keep)
 
     def setup_observations_gnn(self):
-        """Define the observation space with node and edge features."""
-        # TODO: Your code to specify & modify the observation space goes here
-        # See Grid2Op 'getting started' notebooks for guidance
-        #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
+        """
+        Configure the observation space for GNN-based agents.
+        Creates a graph representation of the power grid with node and edge features.
+        """
         obs_attr_to_keep = ["rho", "topo_vect", "gen_p", "load_p", "actual_dispatch", 'target_dispatch', 'p_or']
-        self.obs_node_attr = ["gen_p","load_p"]
-        self.obs_edge_attr = ["rho","p_or"]
+        self.obs_node_attr = ["gen_p", "load_p"]
+        self.obs_edge_attr = ["rho", "p_or"]
 
         self._gym_env.observation_space.close()
-
-        # this is important as it is what is returned in our step and our reset functions (to us , we then can change it and have the function return somthing else)
-        # we have to use their template code here as we cant control what the step function returns, we can only limit it
         self._gym_env.observation_space = self._gym_env.observation_space.keep_only_attr(obs_attr_to_keep)
 
+        # Define dimensions for the graph representation
         n_nodes = self._g2op_env.n_sub
         n_edges = self._g2op_env.n_line
 
+        # Get edge connectivity information
         obs = self._g2op_env.get_obs()
         edges = list(obs.get_energy_graph().edges)
         edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
 
-        # Define the observation space // this gets passed to the extractor initialization
+        # Define graph-structured observation space
         self.observation_space = Dict({
             "node_features": Box(low=-float('inf'), high=float('inf'), shape=(n_nodes, 2)),
             "edge_features": Box(low=-float('inf'), high=float('inf'), shape=(n_edges, 2)),
             "edge_index": Box(low=0, high=n_nodes-1, shape=(2, n_edges), dtype=int)
         })
 
-
     def _convert_observation(self, obs):
-        """Convert flattened Box observations into tensors for nodes and edges."""
-        # Parse the observation dictionary into separate arrays keyed by attribute name
-        # parsed_obs = self._parse_observation(obs)
+        """
+        Convert Grid2Op observations to graph-structured format for GNN processing.
+        
+        Args:
+            obs: Raw Grid2Op observation
+            
+        Returns:
+            dict: Processed observation with node features, edge features, and connectivity
+        """
         parsed_obs = obs
-        # Get the number of nodes and edges from the environment
         n_nodes = self._g2op_env.n_sub
         n_edges = self._g2op_env.n_line
 
-        # Construct the node and edge features using the parsed observation
-        node_features = self._construct_node_features(parsed_obs)  # Shape: (n_nodes, n_node_attr)
-        edge_features = self._construct_edge_features(parsed_obs)  # Shape: (n_edges, n_edge_attr)
+        # Build feature matrices
+        node_features = self._construct_node_features(parsed_obs)
+        edge_features = self._construct_edge_features(parsed_obs)
 
-        # Convert the node and edge features into tensors
+        # Convert to PyTorch tensors
         node_features = torch.tensor(node_features, dtype=torch.float32)
         edge_features = torch.tensor(edge_features, dtype=torch.float32)
 
-        # Generate the edge index (connectivity graph) as a tensor
+        # Get grid connectivity
         obs = self._g2op_env.get_obs()
         edges = list(obs.get_energy_graph().edges)
         edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
@@ -272,8 +185,11 @@ class Gym2OpEnv(gym.Env):
             "edge_features": edge_features,
             "edge_index": edge_index
         }
-    
+
     def _parse_observation(self, obs):
+        """
+        Parse flat observation array into dictionary of named features.
+        """
         parsed_obs = {}
         current_idx = 0
         for attr in self._gym_env.observation_space._attr_to_keep:
@@ -283,73 +199,101 @@ class Gym2OpEnv(gym.Env):
             parsed_obs[attr] = obs[current_idx:current_idx + size].reshape(shape)
             current_idx += size
         return parsed_obs
-    
-    # sadly we need to do this by hand
+
     def _construct_node_features(self, parsed_obs):
-        """Construct node feature matrix (n_sub × n_node_attr)."""
+        """
+        Construct node feature matrix by aggregating generator and load information.
+        
+        Args:
+            parsed_obs (dict): Parsed observation dictionary
+            
+        Returns:
+            numpy.ndarray: Node feature matrix (n_nodes × n_features)
+        """
         node_features = np.zeros((self._g2op_env.n_sub, len(self.obs_node_attr)), dtype=np.float32)
 
-        # Assign generator power to nodes because of gen_to_subid and load_to_subid being case to case
+        # Map generator powers to corresponding substations
         for gen_id, sub_id in enumerate(self._g2op_env.gen_to_subid):
-            node_features[sub_id, 0] += parsed_obs["gen_p"][gen_id]  # Assign gen_p
+            node_features[sub_id, 0] += parsed_obs["gen_p"][gen_id]
 
-        # Assign load power to nodes
+        # Map load powers to corresponding substations
         for load_id, sub_id in enumerate(self._g2op_env.load_to_subid):
-            node_features[sub_id, 1] += parsed_obs["load_p"][load_id]  # Assign load_p
+            node_features[sub_id, 1] += parsed_obs["load_p"][load_id]
 
         return node_features
-    
 
     def _construct_edge_features(self, parsed_obs):
-        """Construct edge feature matrix (n_edges × n_edge_attr) programmatically."""
+        """
+        Construct edge feature matrix from line properties.
+        
+        Args:
+            parsed_obs (dict): Parsed observation dictionary
+            
+        Returns:
+            numpy.ndarray: Edge feature matrix (n_edges × n_features)
+        """
         edge_features = np.column_stack([parsed_obs[attr] for attr in self.obs_edge_attr])
         return edge_features.astype(np.float32)
-        
+
     def setup_actions(self):
-        # TODO: Your code to specify & modify the action space goes here
-        # See Grid2Op 'getting started' notebooks for guidance
-        #  - Notebooks: https://github.com/rte-france/Grid2Op/tree/master/getting_started
-        # print("WARNING: setup_actions is not doing anything. Implement your own code in this method.")
-
-        # act_attr_to_keep = ["set_bus", "set_line_status", 'curtail', 'redispatch']
+        """
+        Configure action space for multi-agent and hierarchy agents.
+        Includes bus changes, line status changes, generation curtailment and redispatch.
+        """
         act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
-
         self._gym_env.action_space = self._gym_env.action_space.keep_only_attr(act_attr_to_keep)
         
     def setup_base_actions(self):
+        """Configure action space for base agent using discrete actions."""
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space)
-        # self.action_space = MultiDiscrete(self._gym_env.action_space.nvec)
     
     def setup_improved_actions(self):
+        """
+        Configure action space for improved agent.
+        Similar to multi-agent setup but using MultiDiscreteActSpace.
+        """
         act_attr_to_keep = ["change_bus", "change_line_status", 'curtail', 'redispatch']
-
         self._gym_env.action_space = MultiDiscreteActSpace(self._g2op_env.action_space, act_attr_to_keep)
 
-
     def reset(self, seed=None, options=None):
+        """
+        Reset the environment to initial state.
+        
+        Returns:
+            tuple: (observation, info)
+        """
         obs, info = self._gym_env.reset(seed=seed)
         if self.use_gnn:
             obs = self._convert_observation(obs)
         return obs, info
 
     def step(self, action):
+        """
+        Take a step in the environment using the specified action.
+        
+        Args:
+            action: Action to take in the environment
+            
+        Returns:
+            tuple: (observation, reward, done, truncated, info)
+        """
         obs, reward, done, truncated, info = self._gym_env.step(action)
         if self.use_gnn:
             obs = self._convert_observation(obs)
         return obs, reward, done, truncated, info
 
     def render(self):
-        # TODO: Modify for your own required usage
+        """Render the environment."""
         return self._gym_env.render()
 
 
 def main():
 
-    # Agent Choice: base, improved, multi-agent, hierarchy, random
-    agent = 'random'
-    "Train Choice: base, improved, multi-agent, hierarchy"
-    train = None
-    use_gnn = False
+    agent = input("Which agent do you want to run:\nbase, improved, multi-agent, hierarchy, random \n")
+    train_in = input('Do you want to train a model? \nyes or no \n')
+    train = True if train_in[0]=='y' else False
+    use_gnn_in = input('Do you want to use a GNN? \nOnly available for multi-agent and hierarchy \n')
+    use_gnn = True if use_gnn_in[0] == 'y' else False
 
     max_steps = 10000
 
@@ -390,21 +334,8 @@ def main():
             if train is None:
                 model.set_parameters('models/improved_agent')
 
-        if train == 'base' or train == 'improved':
-            wandb.init(
-                    project="RL Assignment",
-                    config=config,
-                    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-                    save_code=True,  # optional
-                    name=model_name
-            )
-
-            wandb_callback = WandbCallback(
-                gradient_save_freq=10,
-                verbose=1,
-            )
-
-            model.learn(100000,callback=wandb_callback, progress_bar=True)
+        if train == True:
+            model.learn(100000, progress_bar=True)
             model.save(f'models/{model_name}')
 
 
@@ -452,65 +383,29 @@ def main():
 
 
 
-        if train == 'multi-agent':
+        if train and agent == 'multi-agent':
 
             # Train each agent separately
 
-            wandb.init(
-                    project="RL Assignment",
-                    config=config,
-                    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-                    save_code=True,  # optional
-                    name="redispatch_agent"
-            )
-            wandb_callback_bus = WandbCallback(
-                gradient_save_freq=10,
-                # model_save_freq=5000,
-                # model_save_path=f"models/{'multi-agent models/change_bus_agent'}",
-                verbose=2,
-            )
             ppo_change_bus.learn(total_timesteps=100000, progress_bar=True, )
             if use_gnn:
                 ppo_change_bus.save('models/multi-agent models/change_bus_gnn_agent')
             else:
                 ppo_change_bus.save('models/multi-agent models/change_bus_agent')
-            
 
-
-            wandb_callback_line = WandbCallback(
-                gradient_save_freq=10,
-                # model_save_freq=5000,
-                # model_save_path=f"models/{'multi-agent models/change_line_status_agent'}",
-                verbose=2,
-            )
             ppo_change_line_status.learn(total_timesteps=100000, progress_bar=True, )
             if use_gnn:
                 ppo_change_line_status.save('models/multi-agent models/change_line_status_gnn_agent')
             else:
                 ppo_change_line_status.save('models/multi-agent models/change_line_status_agent')
             
-
-
-            wandb_callback_curtail = WandbCallback(
-                gradient_save_freq=10,
-                # model_save_freq=5000,
-                # model_save_path=f"models/{'multi-agent models/curtail_agent'}",
-                verbose=2,
-            )
-            ppo_curtail.learn(total_timesteps=100000, progress_bar=True, callback=wandb_callback_curtail)
+            ppo_curtail.learn(total_timesteps=100000, progress_bar=True,)
             if use_gnn:
                 ppo_curtail.save('models/multi-agent models/curtail_gnn_agent')
             else:
                 ppo_curtail.save('models/multi-agent models/curtail_agent')
             
-
-            wandb_callback_redispatch = WandbCallback(
-                gradient_save_freq=10,
-                # model_save_freq=5000,
-                # model_save_path=f"models/{'multi-agent models/redispatch_agent'}",
-                verbose=2,
-            )
-            ppo_redispatch.learn(total_timesteps=100000, progress_bar=True, callback=wandb_callback_redispatch)
+            ppo_redispatch.learn(total_timesteps=100000, progress_bar=True)
             if use_gnn:
                 ppo_redispatch.save('models/multi-agent models/redispatch_gnn_agent')
             else:
@@ -531,16 +426,10 @@ def main():
             hierarchy_agent = PPO('MultiInputPolicy', env=hierarchy_env, tensorboard_log="runs/hierarchy_agent", verbose=1)
 
 
-        if train == 'hierarchy':
+        if train:
             name = f'{agent}'
             name += f'agent' if not use_gnn else f'_gnn_agent'
-            wandb.init(
-                    project="RL Assignment",
-                    config=config,
-                    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-                    save_code=True,  # optional
-                    name=name
-            )
+
             hierarchy_agent.learn(total_timesteps=500000, progress_bar=True,)
             hierarchy_agent.save(f'models/{name}')
 
@@ -580,27 +469,11 @@ def main():
                 obs, reward, terminated, truncated, info = env.step(action)
             else:
                 action = model.predict(obs)
-                obs, reward, terminated, truncated, info = env.step(action[0])
-                
+                obs, reward, terminated, truncated, info = env.step(action[0])             
 
             curr_step += 1
             curr_return += reward
             is_done = terminated or truncated
-
-            # print(f"step = {curr_step}: ")
-            # print(f"\t obs = {obs}")
-            # print(f"\t reward = {reward}")
-            # print(f"\t terminated = {terminated}")
-            # print(f"\t truncated = {truncated}")
-            # print(f"\t info = {info}")
-
-            # Some actions are invalid (see: https://grid2op.readthedocs.io/en/latest/action.html#illegal-vs-ambiguous)
-            # Invalid actions are replaced with 'do nothing' action
-            # is_action_valid = not (info["is_illegal"] or info["is_ambiguous"])
-            # print(f"\t is action valid = {is_action_valid}")
-            # if not is_action_valid:
-            #     print(f"\t\t reason = {info['exception']}")
-            # print("\n")
 
         avg_return += curr_return
         avg_step += curr_step
