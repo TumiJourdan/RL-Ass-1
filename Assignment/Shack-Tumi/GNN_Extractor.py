@@ -10,7 +10,6 @@ import torch_geometric
 from torch_geometric.data import Data,Batch
 import networkx as nx
 import matplotlib.pyplot as plt
-from GNN_Extractor import CustomGNN
 # def create_node_gen_load_list(obs):
 
 #     n_nodes = obs.n_sub

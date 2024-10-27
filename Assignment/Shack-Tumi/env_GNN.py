@@ -18,6 +18,8 @@ import numpy as np
 import wandb
 # GNN
 from GNN_Extractor import CustomGNN
+import signal
+import sys
 # Gymnasium environment wrapper around Grid2Op environment
 class Gym2OpEnv(gym.Env):
     def __init__(
@@ -159,7 +161,6 @@ class Gym2OpEnv(gym.Env):
             parsed_obs[attr] = obs[current_idx:current_idx + size].reshape(shape)
             current_idx += size
         return parsed_obs
-    
     # sadly we need to do this by hand
     def _construct_node_features(self, parsed_obs):
         """Construct node feature matrix (n_sub × n_node_attr)."""
@@ -194,6 +195,7 @@ def main():
     run = wandb.init(
         project="Grid20p",
         config=config,
+        name="custom_run_name",       # Set the run name here
         sync_tensorboard=True
     )
 
@@ -232,9 +234,24 @@ def main():
         tensorboard_log=f"runs/{run.id}",
     )
 
-    model.learn(total_timesteps=config["total_timesteps"], callback=WandbCallback())
-    run.finish()
-    model.save("A2C_GNN")
+
+    def save_and_exit(signum, frame):
+        """Save the model and finish the run when interrupted."""
+        print("\nInterrupted! Saving model and exiting...")
+        model.save("A2C_GNN_NORMALIZE")
+        run.finish()
+        sys.exit(0)
+
+    # Register the signal handler for SIGINT (Ctrl+C) and SIGTERM
+    signal.signal(signal.SIGINT, save_and_exit)
+    signal.signal(signal.SIGTERM, save_and_exit)
+
+    try:
+        model.learn(total_timesteps=config["total_timesteps"], callback=WandbCallback())
+    finally:
+        # Ensure the model is saved at the end, even if interrupted
+        model.save("A2C_GNN_NORMALIZE")
+        run.finish()
 
 if __name__ == "__main__":
     main()

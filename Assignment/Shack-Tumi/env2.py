@@ -164,7 +164,11 @@ class Gym2OpEnv(gym.Env):
         # Construct the node and edge features using the parsed observation
         node_features = self._construct_node_features(parsed_obs)  # Shape: (n_nodes, n_node_attr)
         edge_features = self._construct_edge_features(parsed_obs)  # Shape: (n_edges, n_edge_attr)
+        # Normalize node features (e.g., "gen_p" and "load_p")
+        node_features = self._normalize_features(node_features)
 
+        # Normalize edge features (e.g., "rho" and "p_or")
+        edge_features = self._normalize_features(edge_features)
         # Convert the node and edge features into tensors
         node_features = torch.tensor(node_features, dtype=torch.float32)
         edge_features = torch.tensor(edge_features, dtype=torch.float32)
@@ -179,7 +183,9 @@ class Gym2OpEnv(gym.Env):
             "edge_features": edge_features,
             "edge_index": edge_index
         }
-    
+    def _normalize_features(self, features):
+        """Apply min-max normalization to the features."""
+        return (features - features.min(axis=0)) / (features.max(axis=0) - features.min(axis=0) + 1e-8)
     def _parse_observation(self, obs):
         parsed_obs = {}
         current_idx = 0
@@ -224,6 +230,7 @@ def main():
 
     run = wandb.init(
         project="Grid20pFinal",
+        
         config=config,
         sync_tensorboard=True
     )
@@ -252,7 +259,7 @@ def main():
     
     policy_kwargs = dict(
             features_extractor_class=CustomGNN,
-            features_extractor_kwargs=dict(features_dim=1120),
+            features_extractor_kwargs=dict(features_dim=512),
             optimizer_class=rmsprop_with_momentum,  # Add custom optimizer
         )
 
@@ -271,7 +278,7 @@ def main():
         callback=[WandbCallback(), callback],
         
     )
-    model.save("A2C_curriculum_trained")
+    model.save("A2C_curriculum_trained_norm")
 
     run.finish()
 
