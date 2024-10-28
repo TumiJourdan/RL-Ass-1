@@ -1,0 +1,14 @@
+Requirements
+torch
+torch-geometric
+stable-baselines3
+gymnasium
+grid2op
+lightsim2grid
+wandb
+networkx
+matplotlib
+numpy==1.24.4
+
+Install command for your convenience
+!pip install torch torch-geometric stable-baselines3 gymnasium grid2op lightsim2grid wandb networkx matplotlib numpy==1.24.4
