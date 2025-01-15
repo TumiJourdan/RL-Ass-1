@@ -29,7 +29,7 @@ Implement and analyze the Q-Learning and SARSA algorithms, understanding their b
 ---
 
 ### Lab - Blackjack
-
+ [BlackJack Lab](/Lab-Blackjack)
 **Objective:**  
 Develop an RL agent to play Blackjack optimally using Monte Carlo methods.
 
@@ -57,10 +57,6 @@ Implement the Deep Q-Learning (DQN) algorithm to play Atari's Pong game.
 - Training can be computationally intensive; Google Colab with GPU support is recommended.
 
 ---
-
-## File Structure
-
-
 
 # Power Grid Management using Reinforcement Learning
 
