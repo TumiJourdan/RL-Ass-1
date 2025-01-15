@@ -10,6 +10,8 @@ This repository contains a collection of labs and assignments exploring various 
 
 ### Lab - Q-Learning and SARSA
 
+ [Q-Learning Lab](/DP LAB)
+
 **Objective:**  
 Implement and analyze the Q-Learning and SARSA algorithms, understanding their behaviors under different conditions.
 
