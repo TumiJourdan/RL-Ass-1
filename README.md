@@ -65,22 +65,8 @@ python run_ppo.py --mode multi_agent
 # Run PPO with hierarchical learning
 python run_ppo.py --mode hierarchical
 
-## Project Structure
-├── Assignment/\
-│   ├── agents/\
-│   │   ├── a2c/\
-│   │   │   ├── base_agent.py\
-│   │   │   ├── curriculum_agent.py\
-│   │   │   └── gnn_agent.py\
-│   │   └── ppo/\
-│   │       ├── base_agent.py\
-│   │       ├── multi_agent.py\
-│   │       └── hierarchical_agent.py\
-│   ├── utils/\
-│   │   ├── wrappers.py\
-│   │   └── preprocessing.py\
-│   ├── run_a2c.py\
-│   └── run_ppo.py\
+# Project 
+The project is in the Assignment folder
 
 ## Training Details
 - Training environment: l2rpn_case14_sandbox
