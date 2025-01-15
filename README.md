@@ -10,7 +10,7 @@ This repository contains a collection of labs and assignments exploring various 
 
 ### Lab - Q-Learning and SARSA
 
- [Q-Learning Lab](/DQN%20Lab)
+ [Q-Learning Lab](/DP%20Lab)
 
 **Objective:**  
 Implement and analyze the Q-Learning and SARSA algorithms, understanding their behaviors under different conditions.
@@ -29,7 +29,7 @@ Implement and analyze the Q-Learning and SARSA algorithms, understanding their b
 ---
 
 ### Lab - Blackjack
- [BlackJack Lab](/Lab%20-%20Blackjack)
+ [BlackJack Folder](/Lab%20-%20Blackjack)
 **Objective:**  
 Develop an RL agent to play Blackjack optimally using Monte Carlo methods.
 
@@ -40,7 +40,7 @@ Develop an RL agent to play Blackjack optimally using Monte Carlo methods.
 ---
 
 ### Lab - Deep Q-Network (DQN)
-
+[DQN Folder](/DQN%20Lab)
 **Objective:**  
 Implement the Deep Q-Learning (DQN) algorithm to play Atari's Pong game.
 
