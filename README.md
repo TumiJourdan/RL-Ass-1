@@ -59,7 +59,7 @@ Implement the Deep Q-Learning (DQN) algorithm to play Atari's Pong game.
 ---
 
 # Power Grid Management using Reinforcement Learning
-
+[Project Folder](/Handin)
 ## Project Overview
 This project implements and compares two reinforcement learning approaches for power grid management:
 - Actor-Critic (A2C)
@@ -124,9 +124,6 @@ python run_ppo.py --mode multi_agent
 
 # Run PPO with hierarchical learning
 python run_ppo.py --mode hierarchical
-
-# Project 
-The project is in the Assignment folder
 
 ## Training Details
 - Training environment: l2rpn_case14_sandbox
