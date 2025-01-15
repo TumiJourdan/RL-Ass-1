@@ -29,7 +29,7 @@ Implement and analyze the Q-Learning and SARSA algorithms, understanding their b
 ---
 
 ### Lab - Blackjack
- [BlackJack Lab](/Lab-Blackjack)
+ [BlackJack Lab](/Lab%20-%20Blackjack)
 **Objective:**  
 Develop an RL agent to play Blackjack optimally using Monte Carlo methods.
 
